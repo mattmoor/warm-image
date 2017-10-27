@@ -1,0 +1,23 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: &name warmimage-controller
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: warmimage-controller
+    spec:
+      containers:
+      - name: warmimage-controller
+        image: gcr.io/mattmoor-public/warm-image/controller:latest
+        env:
+          - name: MY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+
+          # We don't need the downward API, just YAML anchors/refs.
+          - name: OWNER_NAME
+            value: *name
