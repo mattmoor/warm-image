@@ -1,0 +1,28 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata: {name: warmimages.mattmoor.io}
+spec:
+  group: mattmoor.io
+  names: {kind: WarmImage, plural: warmimages, singular: warmimage}
+  scope: Cluster
+  version: v1
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata: {name: warmimage-controller}
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels: {app: warmimage-controller}
+    spec:
+      containers:
+      - env:
+        - name: MY_NAMESPACE
+          valueFrom:
+            fieldRef: {fieldPath: metadata.namespace}
+        - {name: OWNER_NAME, value: warmimage-controller}
+        image: gcr.io/mattmoor-public/warm-image/controller@sha256:1e2db56108a43f0e9e56ee6e8137bdac3e99931eeb24b18c810062de6fb82116
+        name: warmimage-controller
+
