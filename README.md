@@ -15,7 +15,7 @@ To install this custom resource onto your cluster, you may simply run:
 # Create the namespace
 kubectl create namespace warm-image
 # Install the CRD and Controller.
-curl https://raw.githubusercontent.com/mattmoor/warm-image/master/controller.yaml \
+curl https://raw.githubusercontent.com/mattmoor/warm-image/master/release.yaml \
   | kubectl --namespace=warm-image create -f -
 ```
 
