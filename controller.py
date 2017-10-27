@@ -1,24 +1,49 @@
 """A controller for turning WarmImage CRDs into real things."""
 
+import hashlib
+import httplib
 import json
 from kubernetes import client, config, watch
+from kubernetes.client.rest import ApiException
 import logging
 import os
+import time
 
 DOMAIN = "mattmoor.io"
 VERSION = "v1"
 PLURAL = "warmimages"
 
-
 class WarmImage(object):
     def __init__(self, obj):
         self._obj = obj
         self._metadata = obj["metadata"]
-        self._image = obj["spec"]["image"]
-        # TODO(mattmoor): Support optional pull secrets.
+        self._spec = obj["spec"]
+        self._image = self._spec["image"]
+        self._secrets = self._spec.get("imagePullSecrets")
+        self._version = hashlib.sha1(json.dumps(
+            self._spec, sort_keys=True)).hexdigest()
 
     def name(self):
+        return self.crd_name() + "-" + self.version()
+
+    def crd_name(self):
         return self._metadata["name"]
+
+    def version(self):
+        return self._version
+
+    # Returns a selector that matches any version of
+    # a DaemonSet for this WarmImage.
+    def any_versions(self):
+        return "name=" + self.crd_name()
+
+    # Returns a selector that matches versions other
+    # than the current version for this WarmImage.
+    def other_versions(self):
+        return ",".join([
+            self.any_versions(),
+            "version!=" + self.version(),
+        ])
 
     def image(self):
         return self._image
@@ -31,15 +56,19 @@ class WarmImage(object):
             "apiVersion": "extensions/v1beta1",
             "kind": "DaemonSet",
             "metadata": {
-                # TODO(mattmoor): Does this disambiguate enough?
                 "name": self.name(),
                 "ownerReferences": owner_refs,
+                "labels": {
+                    "name": self.crd_name(),
+                    "version": self.version(),
+                },
             },
             "spec": {
                 "template": {
                     "metadata": {
                         "labels": {
-                            "name": self.name(),
+                            "name": self.crd_name(),
+                            "version": self.version(),
                         },
                     },
                     "spec": {
@@ -49,8 +78,8 @@ class WarmImage(object):
                             # TODO(mattmoor): Do something better than this.
                             "command": ["/bin/sh"],
                             "args": ["-c", "sleep 10000000000"],
-                            # TODO(mattmoor): Support pull secrets.
                         }],
+                        "imagePullSecrets": self._secrets,
                     },
                 },
             },
@@ -87,21 +116,29 @@ def main():
         logging.error("Created the DaemonSet: %s", ds)
 
     def update_meta(warmimage):
-        logging.error("TODO Update the DaemonSet for: %s", str(warmimage))
+        try:
+            # Start warming up the images.
+            create_meta(warmimage)
+        except ApiException as e:
+            if e.status != httplib.CONFLICT:
+                raise e
 
-    def delete_meta(warmimage):
-        ext_beta1.delete_namespaced_daemon_set(
-            warmimage.name(), namespace, body=client.V1DeleteOptions(
-                propagation_policy='Foreground', grace_period_seconds=5))
-        logging.error("Deleted the DaemonSet for: %s", str(warmimage))
+        # Tear down any versions that shouldn't exist.
+        delete_meta(warmimage.other_versions())
+
+    def delete_meta(selector):
+        for ds in ext_beta1.list_namespaced_daemon_set(
+                namespace, label_selector=selector).items:
+            ext_beta1.delete_namespaced_daemon_set(
+                ds.metadata.name, namespace, body=client.V1DeleteOptions(
+                    propagation_policy='Foreground', grace_period_seconds=5))
+            logging.error("Deleted the DaemonSet for: %s", str(warmimage))
 
     def process_meta(t, warmimage, obj):
         if t == "DELETED":
-            delete_meta(warmimage)
-        elif t == "MODIFIED":
+            delete_meta(warmimage.any_versions())
+        elif t in ["MODIFIED", "ADDED"]:
             update_meta(warmimage)
-        elif t == "ADDED":
-            create_meta(warmimage)
         else:
             logging.error("Unrecognized type: %s", t)
 

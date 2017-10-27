@@ -15,7 +15,7 @@ _py_image_repos()
 
 git_repository(
     name = "io_bazel_rules_k8s",
-    commit = "60c348d018d698a625f30db23216ffc5e2ba41a5",
+    commit = "78a4480e2b092eccf840faf7894c900d1497b9fd",
     remote = "https://github.com/bazelbuild/rules_k8s.git",
 )
 
