@@ -75,6 +75,7 @@ class WarmImage(object):
                         "containers": [{
                             "name": "the-image",
                             "image": self.image(),
+                            "imagePullPolicy": "Always",
                             # TODO(mattmoor): Do something better than this.
                             "command": ["/bin/sh"],
                             "args": ["-c", "sleep 10000000000"],

@@ -23,6 +23,6 @@ spec:
           valueFrom:
             fieldRef: {fieldPath: metadata.namespace}
         - {name: OWNER_NAME, value: warmimage-controller}
-        image: gcr.io/mattmoor-public/warm-image/controller@sha256:1e2db56108a43f0e9e56ee6e8137bdac3e99931eeb24b18c810062de6fb82116
+        image: gcr.io/mattmoor-public/warm-image/controller@sha256:b2d58f4adbad6feb81cb80d7fe42ad6d30611c94ad659be0fb3e0aa9bf5a66ec
         name: warmimage-controller
 
