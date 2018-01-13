@@ -1,0 +1,7 @@
+apiVersion: samplecontroller.k8s.io/v1alpha1
+kind: Bar
+metadata:
+  name: example-bar
+spec:
+  deploymentName: example-bar
+  replicas: 1

@@ -1,71 +1,81 @@
 workspace(name = "io_mattmoor_warmimage")
 
+http_archive(
+    name = "io_kubernetes_build",
+    sha256 = "cf138e48871629345548b4aaf23101314b5621c1bdbe45c4e75edb45b08891f0",
+    strip_prefix = "repo-infra-1fb0a3ff0cc5308a6d8e2f3f9c57d1f2f940354e",
+    urls = ["https://github.com/kubernetes/repo-infra/archive/1fb0a3ff0cc5308a6d8e2f3f9c57d1f2f940354e.tar.gz"],
+)
+
+# Pull in rules_go
+git_repository(
+    name = "io_bazel_rules_go",
+    commit = "737df20c53499fd84b67f04c6ca9ccdee2e77089",
+    remote = "https://github.com/bazelbuild/rules_go.git",
+)
+
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains", "go_repository")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+# Pull in rules_docker
 git_repository(
     name = "io_bazel_rules_docker",
-    commit = "839a297d4e874216b4fd93f09dd35be5592dc10e",
+    commit = "8aeab63328a82fdb8e8eb12f677a4e5ce6b183b1",
     remote = "https://github.com/bazelbuild/rules_docker.git",
 )
 
 load(
-    "@io_bazel_rules_docker//python:image.bzl",
-    _py_image_repos = "repositories",
+    "@io_bazel_rules_docker//docker:docker.bzl",
+    "docker_repositories",
 )
 
-_py_image_repos()
+docker_repositories()
 
+# Pull in the go_image stuff.
+load(
+    "@io_bazel_rules_docker//go:image.bzl",
+    _go_image_repos = "repositories",
+)
+
+_go_image_repos()
+
+# Pull in rules_k8s
 git_repository(
     name = "io_bazel_rules_k8s",
-    commit = "78a4480e2b092eccf840faf7894c900d1497b9fd",
-    remote = "https://github.com/bazelbuild/rules_k8s.git",
+    commit = "3756369d4920033c32c12d16207e8ee14fee1b18",
+    remote = "https://github.com/bazelbuild/rules_k8s",
 )
 
 load("@io_bazel_rules_k8s//k8s:k8s.bzl", "k8s_repositories", "k8s_defaults")
 
 k8s_repositories()
 
-# TODO(mattmoor): Parameterize this.
-_CLUSTER = "gke_convoy-adapter_us-central1-f_bazel-grpc"
+_CLUSTER = "{STABLE_K8S_CLUSTER}"
+_REPOSITORY = "{STABLE_DOCKER_REPO}"
 
-# No kind, namespaces to the user.
 k8s_defaults(
     name = "k8s_object",
     cluster = _CLUSTER,
+    image_chroot = _REPOSITORY,
 )
 
-# The CRDs and controllers go into a central namespace.
-[k8s_defaults(
-    name = "k8s_" + kind,
-    cluster = _CLUSTER,
-    kind = kind,
-    namespace = "warm-image",
-) for kind in [
-    "crd",
-    "deployment",
-]]
-
-
-git_repository(
-    name = "io_bazel_rules_python",
-    commit = "c208292d1286e9a0280555187caf66cd3b4f5bed",
-    remote = "https://github.com/bazelbuild/rules_python.git",
+go_repository(
+    name = "io_k8s_code_generator",
+    commit = "3c1fe2637f4efce271f1e6f50e039b2a0467c60c",
+    importpath = "k8s.io/code-generator",
 )
 
-load(
-    "@io_bazel_rules_python//python:pip.bzl",
-    "pip_import",
-    "pip_repositories",
+go_repository(
+    name = "io_k8s_gengo",
+    commit = "1ef560bbde5195c01629039ad3b337ce63e7b321",
+    importpath = "k8s.io/gengo",
 )
 
-pip_repositories()
-
-pip_import(
-    name = "warmimage_pip",
-    requirements = "//:requirements.txt",
+go_repository(
+    name = "com_github_spf13_pflag",
+    commit = "4c012f6dcd9546820e378d0bdda4d8fc772cdfea",
+    importpath = "github.com/spf13/pflag",
 )
-
-load(
-    "@warmimage_pip//:requirements.bzl",
-    _pip_install = "pip_install",
-)
-
-_pip_install()

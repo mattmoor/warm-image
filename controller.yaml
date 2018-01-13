@@ -11,7 +11,10 @@ spec:
     spec:
       containers:
       - name: warmimage-controller
-        image: gcr.io/mattmoor-public/warm-image/controller:latest
+        image: warmimage-controller:latest
+        args:
+        - "-logtostderr=true"
+        - "-stderrthreshold=INFO"
         env:
           - name: MY_NAMESPACE
             valueFrom:
