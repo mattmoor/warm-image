@@ -12,31 +12,23 @@ secrets) and prefetches it onto every node in your cluster.
 
 To install this custom resource onto your cluster, you may simply run:
 ```shell
-# Create the namespace
-kubectl create namespace warm-image
 # Install the CRD and Controller.
 curl https://raw.githubusercontent.com/mattmoor/warm-image/master/release.yaml \
-  | kubectl --namespace=warm-image create -f -
+  | kubectl create -f -
 ```
 
 Alternately you may `git clone` this repository and run:
 ```shell
-# Create the namespace
-kubectl create namespace warm-image
 # Install the CRD and Controller.
-kubectl  --namespace=warm-image create -f release.yaml
+# TODO(mattmoor): NEEDS UPDATE
+kubectl create -f release.yaml
 ```
 
 ### Uninstall
 
-If you have isolated this controller into its own namespace, you can clean
-things up by deleting the `warm-image` namespace.  Alternately:
-```shell
-# This should clean up all of the DaemonSets
-kubectl delete deployment warmimage-controller
-# This should clean up all of the WarmImages
-kubectl delete crd warmimages.mattmoor.io
-```
+Simply use the same command you used to install, but with `kubectl delete` instead of `kubectl create`.
+
+TODO(mattmoor): NEEDS UPDATE This will result in the 404 deleting the controller.
 
 ## Usage
 

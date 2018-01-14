@@ -51,6 +51,16 @@ k8s_object(
 )
 
 k8s_object(
+    name = "namespace",
+    template = "namespace.yaml",
+)
+
+k8s_object(
+    name = "serviceaccount",
+    template = "serviceaccount.yaml",
+)
+
+k8s_object(
     name = "clusterrolebinding",
     template = "clusterrolebinding.yaml",
 )
@@ -62,11 +72,21 @@ k8s_object(
 
 load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
 
-# TODO(mattmoor): Create a namespace and a service account for it.
+k8s_objects(
+    name = "authz",
+    objects = [
+        ":serviceaccount",
+        ":clusterrolebinding",
+    ],
+)
+
+# TODO(mattmoor): everything.delete will fail until this is resolved:
+# https://github.com/bazelbuild/rules_k8s/issues/97
 k8s_objects(
     name = "everything",
     objects = [
-        ":clusterrolebinding",
+        ":namespace",
+        ":authz",
         ":warmimage",
         ":controller",
     ],

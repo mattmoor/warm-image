@@ -18,6 +18,7 @@ package warmimage
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -118,7 +119,7 @@ func NewController(
 		warmimagesSynced:   warmimageInformer.Informer().HasSynced,
 		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "WarmImages"),
 		recorder:           recorder,
-		namespace:          os.Getenv("MY_ENVIRONMENT"),
+		namespace:          os.Getenv("MY_NAMESPACE"),
 	}
 
 	glog.Info("Setting up event handlers")
