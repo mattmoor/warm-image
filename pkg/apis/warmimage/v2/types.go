@@ -17,6 +17,7 @@ limitations under the License.
 package v2
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,6 +36,8 @@ type WarmImage struct {
 
 // WarmImageSpec is the spec for a WarmImage resource
 type WarmImageSpec struct {
+	Image            string                       `json:"image"`
+	ImagePullSecrets *corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // WarmImageStatus is the status for a WarmImage resource

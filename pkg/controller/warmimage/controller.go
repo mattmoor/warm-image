@@ -245,7 +245,10 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	//TODO Do stuff with WarmImage here!
+	glog.Infof("Asked to warm up: %q", warmimage.Spec.Image)
+	if warmimage.Spec.ImagePullSecrets != nil {
+		glog.Infof("... with secrets: %v", warmimage.Spec.ImagePullSecrets)
+	}
 
 	c.recorder.Event(warmimage, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
