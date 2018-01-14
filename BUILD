@@ -51,16 +51,22 @@ k8s_object(
 )
 
 k8s_object(
+    name = "clusterrolebinding",
+    template = "clusterrolebinding.yaml",
+)
+
+k8s_object(
     name = "warmimage",
     template = "warmimage.yaml",
 )
 
 load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
 
+# TODO(mattmoor): Create a namespace and a service account for it.
 k8s_objects(
     name = "everything",
     objects = [
-        "//artifacts/examples:authz",
+        ":clusterrolebinding",
         ":warmimage",
         ":controller",
     ],
