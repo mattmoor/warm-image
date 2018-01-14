@@ -1,7 +1,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: &name warmimage-controller
+  name: warmimage-controller
 spec:
   replicas: 1
   template:
@@ -20,7 +20,3 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-
-          # We don't need the downward API, just YAML anchors/refs.
-          - name: OWNER_NAME
-            value: *name

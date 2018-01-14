@@ -44,7 +44,7 @@ kubectl delete crd warmimages.mattmoor.io
 
 The specification for an image to "warm up" looks like:
 ```yaml
-apiVersion: "mattmoor.io/v1"
+apiVersion: mattmoor.io/v2
 kind: WarmImage
 metadata:
   name: example-warmimage
@@ -68,7 +68,7 @@ You can see what images are "warm" via:
 ```shell
 $ kubectl get warmimages
 NAME                KIND
-example-warmimage   WarmImage.v1.mattmoor.io
+example-warmimage   WarmImage.v2.mattmoor.io
 ```
 
 ### Updating

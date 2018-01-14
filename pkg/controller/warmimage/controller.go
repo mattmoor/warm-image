@@ -22,7 +22,10 @@ import (
 
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
@@ -35,6 +38,9 @@ import (
 
 	"github.com/mattmoor/warm-image/pkg/controller"
 
+	extlisters "k8s.io/client-go/listers/extensions/v1beta1"
+
+	warmimagev2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
 	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
 	warmimagescheme "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/scheme"
 	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions"
@@ -62,6 +68,9 @@ type Controller struct {
 	// warmimageclientset is a clientset for our own API group
 	warmimageclientset clientset.Interface
 
+	daemonsetsLister extlisters.DaemonSetLister
+	daemonsetsSynced cache.InformerSynced
+
 	warmimagesLister listers.WarmImageLister
 	warmimagesSynced cache.InformerSynced
 
@@ -74,6 +83,9 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+
+	// The namespace in which to create resources.
+	namespace string
 }
 
 // NewController returns a new warmimage controller
@@ -84,6 +96,7 @@ func NewController(
 	warmimageInformerFactory informers.SharedInformerFactory) controller.Interface {
 
 	// obtain a reference to a shared index informer for the WarmImage type.
+	daemonsetInformer := kubeInformerFactory.Extensions().V1beta1().DaemonSets()
 	warmimageInformer := warmimageInformerFactory.Mattmoor().V2().WarmImages()
 
 	// Create event broadcaster
@@ -99,10 +112,13 @@ func NewController(
 	controller := &Controller{
 		kubeclientset:      kubeclientset,
 		warmimageclientset: warmimageclientset,
+		daemonsetsLister:   daemonsetInformer.Lister(),
+		daemonsetsSynced:   daemonsetInformer.Informer().HasSynced,
 		warmimagesLister:   warmimageInformer.Lister(),
 		warmimagesSynced:   warmimageInformer.Informer().HasSynced,
 		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "WarmImages"),
 		recorder:           recorder,
+		namespace:          os.Getenv("MY_ENVIRONMENT"),
 	}
 
 	glog.Info("Setting up event handlers")
@@ -221,6 +237,58 @@ func (c *Controller) enqueueWarmImage(obj interface{}) {
 	c.workqueue.AddRateLimited(key)
 }
 
+func labelsForDaemonSet(wi *warmimagev2.WarmImage) map[string]string {
+	return map[string]string{
+		"controller": string(wi.UID),
+		"version":    wi.ResourceVersion,
+	}
+}
+
+func oldVersionLabelSelector(wi *warmimagev2.WarmImage) string {
+	return fmt.Sprintf("controller=%s,version!=%s", wi.UID, wi.ResourceVersion)
+}
+
+func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
+	ips := []corev1.LocalObjectReference{}
+	if wi.Spec.ImagePullSecrets != nil {
+		ips = append(ips, *wi.Spec.ImagePullSecrets)
+	}
+	return &extv1beta1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: wi.Name,
+			Labels:       labelsForDaemonSet(wi),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(wi, schema.GroupVersionKind{
+					Group:   warmimagev2.SchemeGroupVersion.Group,
+					Version: warmimagev2.SchemeGroupVersion.Version,
+					Kind:    "WarmImage",
+				}),
+			},
+		},
+		Spec: extv1beta1.DaemonSetSpec{
+			Template: corev1.PodTemplateSpec{
+				// TODO(mattmoor): Is this necessary?
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labelsForDaemonSet(wi),
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:            "the-image",
+							Image:           wi.Spec.Image,
+							ImagePullPolicy: corev1.PullAlways,
+							// TODO(mattmoor): Do something better than this.
+							Command: []string{"/bin/sh"},
+							Args:    []string{"-c", "sleep 10000000000"},
+						},
+					},
+					ImagePullSecrets: ips,
+				},
+			},
+		},
+	}
+}
+
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the WarmImage resource
 // with the current status of the resource.
@@ -245,9 +313,39 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
-	glog.Infof("Asked to warm up: %q", warmimage.Spec.Image)
-	if warmimage.Spec.ImagePullSecrets != nil {
-		glog.Infof("... with secrets: %v", warmimage.Spec.ImagePullSecrets)
+	// Make sure the desired image is warmed up ASAP.
+	l := labelsForDaemonSet(warmimage)
+	dss, err := c.kubeclientset.ExtensionsV1beta1().DaemonSets(c.namespace).List(metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
+			MatchLabels: l,
+		}),
+	})
+	if err != nil {
+		return err
+	}
+	switch {
+	// If none exist, create one.
+	case len(dss.Items) == 0:
+		ds := newDaemonSet(warmimage)
+		ds, err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(c.namespace).Create(ds)
+		if err != nil {
+			return err
+		}
+		glog.Infof("Warming up: %q, with %q", warmimage.Spec.Image, ds.Name)
+
+	// If multiple exist, delete all but one.
+	case len(dss.Items) > 1:
+		glog.Error("NYI: cleaning up multiple daemonsets for a single WarmImage.")
+	}
+
+	// Delete any older versions of this WarmImage.
+	propPolicy := metav1.DeletePropagationForeground
+	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(c.namespace).DeleteCollection(
+		&metav1.DeleteOptions{PropagationPolicy: &propPolicy},
+		metav1.ListOptions{LabelSelector: oldVersionLabelSelector(warmimage)},
+	)
+	if err != nil {
+		return err
 	}
 
 	c.recorder.Event(warmimage, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
