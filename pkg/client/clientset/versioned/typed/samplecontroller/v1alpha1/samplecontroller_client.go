@@ -24,17 +24,12 @@ import (
 
 type SamplecontrollerV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	BarsGetter
 	FoosGetter
 }
 
 // SamplecontrollerV1alpha1Client is used to interact with features provided by the samplecontroller.k8s.io group.
 type SamplecontrollerV1alpha1Client struct {
 	restClient rest.Interface
-}
-
-func (c *SamplecontrollerV1alpha1Client) Bars(namespace string) BarInterface {
-	return newBars(c, namespace)
 }
 
 func (c *SamplecontrollerV1alpha1Client) Foos(namespace string) FooInterface {

@@ -18,14 +18,6 @@ limitations under the License.
 
 package v1alpha1
 
-// BarListerExpansion allows custom methods to be added to
-// BarLister.
-type BarListerExpansion interface{}
-
-// BarNamespaceListerExpansion allows custom methods to be added to
-// BarNamespaceLister.
-type BarNamespaceListerExpansion interface{}
-
 // FooListerExpansion allows custom methods to be added to
 // FooLister.
 type FooListerExpansion interface{}

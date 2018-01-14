@@ -28,7 +28,6 @@ import (
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/mattmoor/warm-image/pkg/controller"
-	"github.com/mattmoor/warm-image/pkg/controller/bar"
 	"github.com/mattmoor/warm-image/pkg/controller/foo"
 
 	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
@@ -72,7 +71,6 @@ func main() {
 	// Add new controllers here.
 	ctors := []controller.Constructor{
 		foo.NewController,
-		bar.NewController,
 	}
 
 	// Build all of our controllers, with the clients constructed above.

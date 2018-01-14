@@ -25,10 +25,6 @@ type FakeSamplecontrollerV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeSamplecontrollerV1alpha1) Bars(namespace string) v1alpha1.BarInterface {
-	return &FakeBars{c, namespace}
-}
-
 func (c *FakeSamplecontrollerV1alpha1) Foos(namespace string) v1alpha1.FooInterface {
 	return &FakeFoos{c, namespace}
 }

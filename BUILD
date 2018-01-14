@@ -18,7 +18,6 @@ go_library(
         "//pkg/client/clientset/versioned:go_default_library",
         "//pkg/client/informers/externalversions:go_default_library",
         "//pkg/controller:go_default_library",
-        "//pkg/controller/bar:go_default_library",
         "//pkg/controller/foo:go_default_library",
         "//pkg/signals:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
@@ -51,14 +50,18 @@ k8s_object(
     template = "controller.yaml",
 )
 
+k8s_object(
+    name = "warmimage",
+    template = "warmimage.yaml",
+)
+
 load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
 
 k8s_objects(
     name = "everything",
     objects = [
         "//artifacts/examples:authz",
-        "//artifacts/examples:foo",
-        "//artifacts/examples:bar",
+        ":warmimage",
         ":controller",
     ],
 )

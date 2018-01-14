@@ -4,7 +4,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "doc.go",
-        "fake_bar.go",
         "fake_foo.go",
         "fake_samplecontroller_client.go",
     ],
