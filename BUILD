@@ -18,7 +18,7 @@ go_library(
         "//pkg/client/clientset/versioned:go_default_library",
         "//pkg/client/informers/externalversions:go_default_library",
         "//pkg/controller:go_default_library",
-        "//pkg/controller/foo:go_default_library",
+        "//pkg/controller/warmimage:go_default_library",
         "//pkg/signals:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/k8s.io/client-go/informers:go_default_library",

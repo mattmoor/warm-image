@@ -21,7 +21,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "github.com/mattmoor/warm-image/pkg/apis/samplecontroller/v1alpha1"
+	v2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -52,9 +52,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=samplecontroller.k8s.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("foos"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Samplecontroller().V1alpha1().Foos().Informer()}, nil
+	// Group=mattmoor.io, Version=v2
+	case v2.SchemeGroupVersion.WithResource("warmimages"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Mattmoor().V2().WarmImages().Informer()}, nil
 
 	}
 

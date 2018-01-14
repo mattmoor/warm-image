@@ -5,7 +5,7 @@ metadata:
   name: warmimages.mattmoor.io
 spec:
   group: mattmoor.io
-  version: v1
+  version: v2
   scope: Cluster
   names:
     plural: warmimages

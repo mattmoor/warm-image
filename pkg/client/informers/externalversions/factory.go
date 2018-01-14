@@ -25,7 +25,7 @@ import (
 
 	versioned "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/mattmoor/warm-image/pkg/client/informers/externalversions/internalinterfaces"
-	samplecontroller "github.com/mattmoor/warm-image/pkg/client/informers/externalversions/samplecontroller"
+	warmimage "github.com/mattmoor/warm-image/pkg/client/informers/externalversions/warmimage"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -123,9 +123,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Samplecontroller() samplecontroller.Interface
+	Mattmoor() warmimage.Interface
 }
 
-func (f *sharedInformerFactory) Samplecontroller() samplecontroller.Interface {
-	return samplecontroller.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Mattmoor() warmimage.Interface {
+	return warmimage.New(f, f.namespace, f.tweakListOptions)
 }

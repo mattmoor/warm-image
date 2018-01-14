@@ -17,8 +17,8 @@ package fake
 
 import (
 	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
-	samplecontrollerv1alpha1 "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/typed/samplecontroller/v1alpha1"
-	fakesamplecontrollerv1alpha1 "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/typed/samplecontroller/v1alpha1/fake"
+	mattmoorv2 "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/typed/warmimage/v2"
+	fakemattmoorv2 "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/typed/warmimage/v2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -59,12 +59,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// SamplecontrollerV1alpha1 retrieves the SamplecontrollerV1alpha1Client
-func (c *Clientset) SamplecontrollerV1alpha1() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return &fakesamplecontrollerv1alpha1.FakeSamplecontrollerV1alpha1{Fake: &c.Fake}
+// MattmoorV2 retrieves the MattmoorV2Client
+func (c *Clientset) MattmoorV2() mattmoorv2.MattmoorV2Interface {
+	return &fakemattmoorv2.FakeMattmoorV2{Fake: &c.Fake}
 }
 
-// Samplecontroller retrieves the SamplecontrollerV1alpha1Client
-func (c *Clientset) Samplecontroller() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return &fakesamplecontrollerv1alpha1.FakeSamplecontrollerV1alpha1{Fake: &c.Fake}
+// Mattmoor retrieves the MattmoorV2Client
+func (c *Clientset) Mattmoor() mattmoorv2.MattmoorV2Interface {
+	return &fakemattmoorv2.FakeMattmoorV2{Fake: &c.Fake}
 }

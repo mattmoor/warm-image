@@ -17,7 +17,7 @@ package versioned
 
 import (
 	glog "github.com/golang/glog"
-	samplecontrollerv1alpha1 "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/typed/samplecontroller/v1alpha1"
+	mattmoorv2 "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/typed/warmimage/v2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -25,27 +25,27 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	SamplecontrollerV1alpha1() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface
+	MattmoorV2() mattmoorv2.MattmoorV2Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Samplecontroller() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface
+	Mattmoor() mattmoorv2.MattmoorV2Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	samplecontrollerV1alpha1 *samplecontrollerv1alpha1.SamplecontrollerV1alpha1Client
+	mattmoorV2 *mattmoorv2.MattmoorV2Client
 }
 
-// SamplecontrollerV1alpha1 retrieves the SamplecontrollerV1alpha1Client
-func (c *Clientset) SamplecontrollerV1alpha1() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return c.samplecontrollerV1alpha1
+// MattmoorV2 retrieves the MattmoorV2Client
+func (c *Clientset) MattmoorV2() mattmoorv2.MattmoorV2Interface {
+	return c.mattmoorV2
 }
 
-// Deprecated: Samplecontroller retrieves the default version of SamplecontrollerClient.
+// Deprecated: Mattmoor retrieves the default version of MattmoorClient.
 // Please explicitly pick a version.
-func (c *Clientset) Samplecontroller() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return c.samplecontrollerV1alpha1
+func (c *Clientset) Mattmoor() mattmoorv2.MattmoorV2Interface {
+	return c.mattmoorV2
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -64,7 +64,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.samplecontrollerV1alpha1, err = samplecontrollerv1alpha1.NewForConfig(&configShallowCopy)
+	cs.mattmoorV2, err = mattmoorv2.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.samplecontrollerV1alpha1 = samplecontrollerv1alpha1.NewForConfigOrDie(c)
+	cs.mattmoorV2 = mattmoorv2.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -90,7 +90,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.samplecontrollerV1alpha1 = samplecontrollerv1alpha1.New(c)
+	cs.mattmoorV2 = mattmoorv2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

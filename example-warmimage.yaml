@@ -1,4 +1,4 @@
-apiVersion: "mattmoor.io/v1"
+apiVersion: mattmoor.io/v2
 kind: WarmImage
 metadata:
   name: example-warmimage
