@@ -96,3 +96,8 @@ k8s_object(
     name = "example-warmimage",
     template = ":example-warmimage.yaml",
 )
+
+k8s_object(
+    name = "release",
+    template = "release.yaml",
+)

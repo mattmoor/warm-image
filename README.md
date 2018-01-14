@@ -20,15 +20,12 @@ curl https://raw.githubusercontent.com/mattmoor/warm-image/master/release.yaml \
 Alternately you may `git clone` this repository and run:
 ```shell
 # Install the CRD and Controller.
-# TODO(mattmoor): NEEDS UPDATE
 kubectl create -f release.yaml
 ```
 
 ### Uninstall
 
 Simply use the same command you used to install, but with `kubectl delete` instead of `kubectl create`.
-
-TODO(mattmoor): NEEDS UPDATE This will result in the 404 deleting the controller.
 
 ## Usage
 
