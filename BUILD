@@ -1,45 +1,103 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@warmimage_pip//:requirements.bzl", "requirement")
-load("@io_bazel_rules_docker//python:image.bzl", "py_image")
+load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_binary", "go_library", "go_prefix")
 
-py_image(
-    name = "controller",
-    srcs = ["controller.py"],
-    main = "controller.py",
-    deps = [requirement("kubernetes")],
+go_prefix("github.com/mattmoor/warm-image")
+
+gazelle(
+    name = "gazelle",
+    external = "vendored",
 )
 
-load("@k8s_crd//:defaults.bzl", "k8s_crd")
-
-k8s_crd(
-    name = "warmimage-crd",
-    template = ":warmimage.yaml",
-)
-
-load("@k8s_deployment//:defaults.bzl", "k8s_deployment")
-
-k8s_deployment(
-    name = "deployment",
-    images = {
-        "gcr.io/mattmoor-public/warm-image/controller:latest": ":controller",
-    },
-    template = ":controller.yaml",
-)
-
-load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
-
-k8s_objects(
-    name = "everything",
-    objects = [
-        ":warmimage-crd",
-        ":deployment",
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/mattmoor/warm-image",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/client/clientset/versioned:go_default_library",
+        "//pkg/client/informers/externalversions:go_default_library",
+        "//pkg/controller:go_default_library",
+        "//pkg/controller/warmimage:go_default_library",
+        "//pkg/signals:go_default_library",
+        "//vendor/github.com/golang/glog:go_default_library",
+        "//vendor/k8s.io/client-go/informers:go_default_library",
+        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
+        "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
     ],
+)
+
+go_binary(
+    name = "warm-image",
+    embed = [":go_default_library"],
+    importpath = "github.com/mattmoor/warm-image",
+)
+
+load("@io_bazel_rules_docker//go:image.bzl", "go_image")
+
+go_image(
+    name = "image",
+    binary = ":warm-image",
 )
 
 load("@k8s_object//:defaults.bzl", "k8s_object")
 
 k8s_object(
-    name = "example-warmimage-crd",
+    name = "controller",
+    images = {
+        "warmimage-controller:latest": ":image",
+    },
+    template = "controller.yaml",
+)
+
+k8s_object(
+    name = "namespace",
+    template = "namespace.yaml",
+)
+
+k8s_object(
+    name = "serviceaccount",
+    template = "serviceaccount.yaml",
+)
+
+k8s_object(
+    name = "clusterrolebinding",
+    template = "clusterrolebinding.yaml",
+)
+
+k8s_object(
+    name = "warmimage",
+    template = "warmimage.yaml",
+)
+
+load("@io_bazel_rules_k8s//k8s:objects.bzl", "k8s_objects")
+
+k8s_objects(
+    name = "authz",
+    objects = [
+        ":serviceaccount",
+        ":clusterrolebinding",
+    ],
+)
+
+# TODO(mattmoor): everything.delete will fail until this is resolved:
+# https://github.com/bazelbuild/rules_k8s/issues/97
+k8s_objects(
+    name = "everything",
+    objects = [
+        ":namespace",
+        ":authz",
+        ":warmimage",
+        ":controller",
+    ],
+)
+
+k8s_object(
+    name = "example-warmimage",
     template = ":example-warmimage.yaml",
+)
+
+k8s_object(
+    name = "release",
+    template = "release.yaml",
 )
