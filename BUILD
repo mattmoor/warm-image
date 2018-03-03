@@ -9,44 +9,12 @@ gazelle(
     external = "vendored",
 )
 
-go_library(
-    name = "go_default_library",
-    srcs = ["main.go"],
-    importpath = "github.com/mattmoor/warm-image",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//pkg/client/clientset/versioned:go_default_library",
-        "//pkg/client/informers/externalversions:go_default_library",
-        "//pkg/controller:go_default_library",
-        "//pkg/controller/warmimage:go_default_library",
-        "//pkg/signals:go_default_library",
-        "//vendor/github.com/golang/glog:go_default_library",
-        "//vendor/k8s.io/client-go/informers:go_default_library",
-        "//vendor/k8s.io/client-go/kubernetes:go_default_library",
-        "//vendor/k8s.io/client-go/tools/clientcmd:go_default_library",
-    ],
-)
-
-go_binary(
-    name = "warm-image",
-    embed = [":go_default_library"],
-    importpath = "github.com/mattmoor/warm-image",
-    pure = "on",
-)
-
-load("@io_bazel_rules_docker//go:image.bzl", "go_image")
-
-go_image(
-    name = "image",
-    binary = ":warm-image",
-)
-
 load("@k8s_object//:defaults.bzl", "k8s_object")
 
 k8s_object(
     name = "controller",
     images = {
-        "warmimage-controller:latest": ":image",
+        "warmimage-controller:latest": "//cmd/controller:image",
     },
     template = "controller.yaml",
 )
