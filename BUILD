@@ -31,6 +31,7 @@ go_binary(
     name = "warm-image",
     embed = [":go_default_library"],
     importpath = "github.com/mattmoor/warm-image",
+    pure = "on",
 )
 
 load("@io_bazel_rules_docker//go:image.bzl", "go_image")
@@ -80,8 +81,6 @@ k8s_objects(
     ],
 )
 
-# TODO(mattmoor): everything.delete will fail until this is resolved:
-# https://github.com/bazelbuild/rules_k8s/issues/97
 k8s_objects(
     name = "everything",
     objects = [

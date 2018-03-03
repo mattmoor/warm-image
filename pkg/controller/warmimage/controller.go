@@ -18,7 +18,6 @@ package warmimage
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -84,9 +83,6 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
-
-	// The namespace in which to create resources.
-	namespace string
 }
 
 // NewController returns a new warmimage controller
@@ -119,7 +115,6 @@ func NewController(
 		warmimagesSynced:   warmimageInformer.Informer().HasSynced,
 		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "WarmImages"),
 		recorder:           recorder,
-		namespace:          os.Getenv("MY_NAMESPACE"),
 	}
 
 	glog.Info("Setting up event handlers")
@@ -316,7 +311,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Make sure the desired image is warmed up ASAP.
 	l := labelsForDaemonSet(warmimage)
-	dss, err := c.kubeclientset.ExtensionsV1beta1().DaemonSets(c.namespace).List(metav1.ListOptions{
+	dss, err := c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).List(metav1.ListOptions{
 		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
 			MatchLabels: l,
 		}),
@@ -328,7 +323,7 @@ func (c *Controller) syncHandler(key string) error {
 	// If none exist, create one.
 	case len(dss.Items) == 0:
 		ds := newDaemonSet(warmimage)
-		ds, err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(c.namespace).Create(ds)
+		ds, err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).Create(ds)
 		if err != nil {
 			return err
 		}
@@ -341,7 +336,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Delete any older versions of this WarmImage.
 	propPolicy := metav1.DeletePropagationForeground
-	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(c.namespace).DeleteCollection(
+	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).DeleteCollection(
 		&metav1.DeleteOptions{PropagationPolicy: &propPolicy},
 		metav1.ListOptions{LabelSelector: oldVersionLabelSelector(warmimage)},
 	)
