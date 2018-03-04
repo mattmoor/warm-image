@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
       - args: [-logtostderr=true, -stderrthreshold=INFO, -sleeper, 'gcr.io/mattmoor-public/sleeper@sha256:d431f1c78bb16fbb0c9831a610bc9580379a4f9ab0a339efd2ffb36ea5ffeca2']
-        image: gcr.io/mattmoor-public/warmimage-controller@sha256:ead3ea8b6acb6f936d2a9f11e25d3f596db9d4824b344e69d4248109dceec2fb
+        image: gcr.io/mattmoor-public/warmimage-controller@sha256:5adc366a59c83b0bb12b424c86ea89a6f996fb089eefb5870d96cf242d7d4926
         name: warmimage-controller
       serviceAccountName: warmimage-controller
 
