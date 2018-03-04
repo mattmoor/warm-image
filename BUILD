@@ -15,6 +15,7 @@ k8s_object(
     name = "controller",
     images = {
         "warmimage-controller:latest": "//cmd/controller:image",
+        "sleeper:latest": "//cmd/sleeper:image",
     },
     template = "controller.yaml",
 )

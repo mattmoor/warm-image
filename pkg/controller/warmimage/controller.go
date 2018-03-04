@@ -17,6 +17,7 @@ limitations under the License.
 package warmimage
 
 import (
+	"flag"
 	"fmt"
 	"time"
 
@@ -59,6 +60,10 @@ const (
 	// MessageResourceSynced is the message used for an Event fired when a WarmImage
 	// is synced successfully
 	MessageResourceSynced = "WarmImage synced successfully"
+)
+
+var (
+	sleeper = flag.String("sleeper", "", "The name of the sleeper image, see //cmd/sleeper")
 )
 
 // Controller is the controller implementation for WarmImage resources
@@ -263,22 +268,41 @@ func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
 		},
 		Spec: extv1beta1.DaemonSetSpec{
 			Template: corev1.PodTemplateSpec{
-				// TODO(mattmoor): Is this necessary?
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labelsForDaemonSet(wi),
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            "the-image",
-							Image:           wi.Spec.Image,
-							ImagePullPolicy: corev1.PullAlways,
-							// TODO(mattmoor): Do something better than this.
-							Command: []string{"/bin/sh"},
-							Args:    []string{"-c", "sleep 10000000000"},
+					InitContainers: []corev1.Container{{
+						Name:            "the-sleeper",
+						Image:           *sleeper,
+						ImagePullPolicy: corev1.PullAlways,
+						Args: []string{
+							"-mode", "copy",
+							"-to", "/drop/sleeper",
 						},
-					},
+						VolumeMounts: []corev1.VolumeMount{{
+							Name:      "the-sleeper",
+							MountPath: "/drop/",
+						}},
+					}},
+					Containers: []corev1.Container{{
+						Name:            "the-image",
+						Image:           wi.Spec.Image,
+						ImagePullPolicy: corev1.PullAlways,
+						Command:         []string{"/drop/sleeper"},
+						Args:            []string{"-mode", "sleep"},
+						VolumeMounts: []corev1.VolumeMount{{
+							Name:      "the-sleeper",
+							MountPath: "/drop/",
+						}},
+					}},
 					ImagePullSecrets: ips,
+					Volumes: []corev1.Volume{{
+						Name: "the-sleeper",
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					}},
 				},
 			},
 		},

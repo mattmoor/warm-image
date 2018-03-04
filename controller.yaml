@@ -17,3 +17,5 @@ spec:
         args:
         - "-logtostderr=true"
         - "-stderrthreshold=INFO"
+        - "-sleeper"
+        - "sleeper:latest"
