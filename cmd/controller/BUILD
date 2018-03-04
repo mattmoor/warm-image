@@ -21,9 +21,9 @@ go_library(
 )
 
 go_binary(
-    name = "warm-image",
+    name = "controller",
     embed = [":go_default_library"],
-    importpath = "github.com/mattmoor/warm-image",
+    importpath = "github.com/mattmoor/controller",
     pure = "on",
 )
 
@@ -31,11 +31,5 @@ load("@io_bazel_rules_docker//go:image.bzl", "go_image")
 
 go_image(
     name = "image",
-    binary = ":warm-image",
-)
-
-go_binary(
-    name = "controller",
-    embed = [":go_default_library"],
-    importpath = "github.com/mattmoor/warm-image/cmd/controller",
+    binary = ":controller",
 )
