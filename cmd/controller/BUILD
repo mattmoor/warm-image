@@ -23,7 +23,7 @@ go_library(
 go_binary(
     name = "controller",
     embed = [":go_default_library"],
-    importpath = "github.com/mattmoor/controller",
+    importpath = "github.com/mattmoor/warm-image/cmd/controller",
     pure = "on",
 )
 

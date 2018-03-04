@@ -13,7 +13,7 @@ go_library(
 go_binary(
     name = "sleeper",
     embed = [":go_default_library"],
-    importpath = "github.com/mattmoor/sleeper",
+    importpath = "github.com/mattmoor/warm-image/cmd/sleeper",
     pure = "on",
 )
 

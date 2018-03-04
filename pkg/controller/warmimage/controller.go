@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -284,6 +285,12 @@ func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
 							Name:      "the-sleeper",
 							MountPath: "/drop/",
 						}},
+						Resources: corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1m"),
+								corev1.ResourceMemory: resource.MustParse("10M"),
+							},
+						},
 					}},
 					Containers: []corev1.Container{{
 						Name:            "the-image",
@@ -295,6 +302,12 @@ func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
 							Name:      "the-sleeper",
 							MountPath: "/drop/",
 						}},
+						Resources: corev1.ResourceRequirements{
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1m"),
+								corev1.ResourceMemory: resource.MustParse("10M"),
+							},
+						},
 					}},
 					ImagePullSecrets: ips,
 					Volumes: []corev1.Volume{{
