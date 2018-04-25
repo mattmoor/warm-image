@@ -13,9 +13,9 @@ spec:
       serviceAccountName: warmimage-controller
       containers:
       - name: warmimage-controller
-        image: warmimage-controller:latest
+        image: github.com/mattmoor/warm-image/cmd/controller
         args:
         - "-logtostderr=true"
         - "-stderrthreshold=INFO"
         - "-sleeper"
-        - "sleeper:latest"
+        - "github.com/mattmoor/warm-image/cmd/sleeper"
