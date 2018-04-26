@@ -14,7 +14,7 @@ k8s_object(
 
 k8s_object(
     name = "namespace",
-    template = "namespace.yaml",
+    template = "a-namespace.yaml",
 )
 
 k8s_object(
