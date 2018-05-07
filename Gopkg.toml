@@ -20,16 +20,24 @@
 #  version = "2.4.0"
 
 # Required for Bazel
-required = ["k8s.io/apimachinery/pkg/util/sets/types"]
+required = [
+  "k8s.io/apimachinery/pkg/util/sets/types",
+  "k8s.io/apimachinery/pkg/apimachinery/registered",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+  "k8s.io/code-generator/cmd/defaulter-gen",
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/code-generator/cmd/lister-gen",
+  "k8s.io/code-generator/cmd/informer-gen"
+]
 
 [[constraint]]
-  branch = "master"
-  name = "k8s.io/api"
-
-[[constraint]]
-  branch = "master"
   name = "k8s.io/client-go"
+  version = "kubernetes-1.10.0"
 
-[[constraint]]
-  branch = "master"
-  name = "github.com/mattmoor/warm-image"
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.10.0"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.10.0"

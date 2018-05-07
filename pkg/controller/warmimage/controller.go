@@ -19,9 +19,13 @@ package warmimage
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/google/go-containerregistry/name"
+	"github.com/google/go-containerregistry/v1/remote"
+	"github.com/mattmoor/k8schain"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -250,10 +254,46 @@ func oldVersionLabelSelector(wi *warmimagev2.WarmImage) string {
 	return fmt.Sprintf("controller=%s,version!=%s", wi.UID, wi.ResourceVersion)
 }
 
-func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
+func resolveTag(client kubernetes.Interface, t string, opt k8schain.Options) (string, error) {
+	tag, err := name.NewTag(t, name.WeakValidation)
+	if err != nil {
+		// If we fail to parse it as a tag, simply return the input string (it is likely a digest)
+		return t, nil
+	}
+
+	kc, err := k8schain.New(client, opt)
+	if err != nil {
+		return "", err
+	}
+
+	auth, err := kc.Resolve(tag.Registry)
+	if err != nil {
+		return "", err
+	}
+
+	img, err := remote.Image(tag, auth, http.DefaultTransport)
+	if err != nil {
+		return "", err
+	}
+	digest, err := img.Digest()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s@%s", tag.Repository.String(), digest), nil
+}
+
+func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv1beta1.DaemonSet, error) {
+	opt := k8schain.Options{
+		Namespace: wi.Namespace,
+	}
 	ips := []corev1.LocalObjectReference{}
 	if wi.Spec.ImagePullSecrets != nil {
 		ips = append(ips, *wi.Spec.ImagePullSecrets)
+		opt.ImagePullSecrets = append(opt.ImagePullSecrets, wi.Spec.ImagePullSecrets.Name)
+	}
+	img, err := resolveTag(client, wi.Spec.Image, opt)
+	if err != nil {
+		return nil, err
 	}
 	return &extv1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -294,7 +334,7 @@ func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
 					}},
 					Containers: []corev1.Container{{
 						Name:            "the-image",
-						Image:           wi.Spec.Image,
+						Image:           img,
 						ImagePullPolicy: corev1.PullAlways,
 						Command:         []string{"/drop/sleeper"},
 						Args:            []string{"-mode", "sleep"},
@@ -319,7 +359,7 @@ func newDaemonSet(wi *warmimagev2.WarmImage) *extv1beta1.DaemonSet {
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 // syncHandler compares the actual state with the desired, and attempts to
@@ -359,7 +399,10 @@ func (c *Controller) syncHandler(key string) error {
 	switch {
 	// If none exist, create one.
 	case len(dss.Items) == 0:
-		ds := newDaemonSet(warmimage)
+		ds, err := newDaemonSet(c.kubeclientset, warmimage)
+		if err != nil {
+			return err
+		}
 		ds, err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).Create(ds)
 		if err != nil {
 			return err
