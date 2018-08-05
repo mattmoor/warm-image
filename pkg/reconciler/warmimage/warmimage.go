@@ -32,14 +32,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	extv1beta1informers "k8s.io/client-go/informers/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 
 	extlisters "k8s.io/client-go/listers/extensions/v1beta1"
 
@@ -51,15 +48,6 @@ import (
 )
 
 const controllerAgentName = "warmimage-controller"
-
-const (
-	// SuccessSynced is used as part of the Event 'reason' when a WarmImage is synced
-	SuccessSynced = "Synced"
-
-	// MessageResourceSynced is the message used for an Event fired when a WarmImage
-	// is synced successfully
-	MessageResourceSynced = "WarmImage synced successfully"
-)
 
 // Reconciler is the controller implementation for WarmImage resources
 type Reconciler struct {
@@ -73,10 +61,6 @@ type Reconciler struct {
 
 	sleeperImage string
 
-	// recorder is an event recorder for recording Event resources to the
-	// Kubernetes API.
-	recorder record.EventRecorder
-
 	// Sugared logger is easier to use but is not as performant as the
 	// raw logger. In performance critical paths, call logger.Desugar()
 	// and use the returned raw logger instead. In addition to the
@@ -89,7 +73,6 @@ type Reconciler struct {
 var _ controller.Reconciler = (*Reconciler)(nil)
 
 func init() {
-	// Create event broadcaster
 	// Add warmimage-controller types to the default Kubernetes Scheme so Events can be
 	// logged for warmimage-controller types.
 	warmimagescheme.AddToScheme(scheme.Scheme)
@@ -108,22 +91,12 @@ func NewController(
 	// Enrich the logs with controller name
 	logger = logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
 
-	logger.Debug("Creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
-		Interface: kubeclientset.CoreV1().Events(""),
-	})
-	recorder := eventBroadcaster.NewRecorder(
-		scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
-
 	r := &Reconciler{
 		kubeclientset:      kubeclientset,
 		warmimageclientset: warmimageclientset,
 		daemonsetsLister:   daemonsetInformer.Lister(),
 		warmimagesLister:   warmimageInformer.Lister(),
 		sleeperImage:       sleeperImage,
-		recorder:           recorder,
 		Logger:             logger,
 	}
 	impl := controller.NewImpl(r, logger, "WarmImages")
@@ -195,13 +168,8 @@ func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage, sleepe
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: wi.Name,
 			Labels:       labelsForDaemonSet(wi),
-			// TODO(mattmoor): Use shared utility for this.
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(wi, schema.GroupVersionKind{
-					Group:   warmimagev2.SchemeGroupVersion.Group,
-					Version: warmimagev2.SchemeGroupVersion.Version,
-					Kind:    "WarmImage",
-				}),
+				*metav1.NewControllerRef(wi, warmimagev2.SchemeGroupVersion.WithKind("WarmImage")),
 			},
 		},
 		Spec: extv1beta1.DaemonSetSpec{
@@ -283,6 +251,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Make sure the desired image is warmed up ASAP.
 	l := labelsForDaemonSet(warmimage)
+	// TODO(mattmoor): List through the Lister.
 	dss, err := c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).List(metav1.ListOptions{
 		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
 			MatchLabels: l,
@@ -319,6 +288,5 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
-	c.recorder.Event(warmimage, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }

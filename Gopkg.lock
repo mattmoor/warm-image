@@ -126,11 +126,6 @@
   revision = "44145f04b68cf362d9c4df2182967c2275eaefed"
 
 [[projects]]
-  name = "github.com/golang/groupcache"
-  packages = ["lru"]
-  revision = "02826c3e79038b59d737d3b1c0a1d937f71a4433"
-
-[[projects]]
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -412,19 +407,16 @@
     "pkg/util/framer",
     "pkg/util/intstr",
     "pkg/util/json",
-    "pkg/util/mergepatch",
     "pkg/util/net",
     "pkg/util/runtime",
     "pkg/util/sets",
     "pkg/util/sets/types",
-    "pkg/util/strategicpatch",
     "pkg/util/validation",
     "pkg/util/validation/field",
     "pkg/util/wait",
     "pkg/util/yaml",
     "pkg/version",
     "pkg/watch",
-    "third_party/forked/golang/json",
     "third_party/forked/golang/reflect"
   ]
   revision = "302974c03f7e50f16561ba237db776ab93594ef6"
@@ -544,7 +536,6 @@
     "tools/clientcmd/api/v1",
     "tools/metrics",
     "tools/pager",
-    "tools/record",
     "tools/reference",
     "transport",
     "util/buffer",
@@ -600,11 +591,6 @@
   revision = "01a732e01d00cb9a81bb0ca050d3e6d2b947927b"
 
 [[projects]]
-  name = "k8s.io/kube-openapi"
-  packages = ["pkg/util/proto"]
-  revision = "39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1"
-
-[[projects]]
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/cloudprovider/providers/azure/auth",
@@ -620,6 +606,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "74f401bb44bff880fce6d36681e66cbdeda0725baa59545bcb579adde9c7bdad"
+  inputs-digest = "ce1a7157c77bfaa028a7a550dfc42572c8571c033ae476059d329cd9ae29917a"
   solver-name = "gps-cdcl"
   solver-version = 1
