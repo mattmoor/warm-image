@@ -351,8 +351,6 @@
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
-    "pkg/apimachinery",
-    "pkg/apimachinery/registered",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
@@ -586,6 +584,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "46fa6c9369e889aa695c17b0b11e154ac301e4e9f45978c3584cc45f469a378e"
+  inputs-digest = "d41937d54022b8779e226ddfcc340f5f7ae07b69d6b8d4dcd821ab22b128e9fa"
   solver-name = "gps-cdcl"
   solver-version = 1
