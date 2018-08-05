@@ -201,6 +201,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/knative/pkg"
+  packages = ["signals"]
+  revision = "a088fee6227f7c6842ce7f7406cb75af8a6e0643"
+
+[[projects]]
+  branch = "master"
   name = "github.com/mattmoor/k8schain"
   packages = ["."]
   revision = "2ff35c9d8b5ea68a46b76e52ad1ba251ac940ae3"
@@ -584,6 +590,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d41937d54022b8779e226ddfcc340f5f7ae07b69d6b8d4dcd821ab22b128e9fa"
+  inputs-digest = "36dbd4d3ea025e8f6899d42ad619f48904ec0549f075ff8928acca668093b38d"
   solver-name = "gps-cdcl"
   solver-version = 1

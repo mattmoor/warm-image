@@ -30,9 +30,9 @@ import (
 	"github.com/mattmoor/warm-image/pkg/controller"
 	"github.com/mattmoor/warm-image/pkg/controller/warmimage"
 
+	"github.com/knative/pkg/signals"
 	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
 	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions"
-	"github.com/mattmoor/warm-image/pkg/signals"
 )
 
 const (
