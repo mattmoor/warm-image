@@ -203,6 +203,7 @@
   branch = "master"
   name = "github.com/knative/pkg"
   packages = [
+    "controller",
     "logging",
     "logging/logkey",
     "signals"
@@ -619,6 +620,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5a71e38b003341809137c239c3e06e2a13bc17d5179834b86c42435a6be06c1f"
+  inputs-digest = "74f401bb44bff880fce6d36681e66cbdeda0725baa59545bcb579adde9c7bdad"
   solver-name = "gps-cdcl"
   solver-version = 1

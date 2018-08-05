@@ -17,13 +17,13 @@ limitations under the License.
 package warmimage
 
 import (
-	"flag"
+	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/google/go-containerregistry/name"
 	"github.com/google/go-containerregistry/v1/remote"
+	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/mattmoor/k8schain"
 	"go.uber.org/zap"
@@ -34,23 +34,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
+	extv1beta1informers "k8s.io/client-go/informers/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
-
-	"github.com/mattmoor/warm-image/pkg/controller"
 
 	extlisters "k8s.io/client-go/listers/extensions/v1beta1"
 
 	warmimagev2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
 	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
 	warmimagescheme "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/scheme"
-	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions"
+	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions/warmimage/v2"
 	listers "github.com/mattmoor/warm-image/pkg/client/listers/warmimage/v2"
 )
 
@@ -59,38 +55,24 @@ const controllerAgentName = "warmimage-controller"
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a WarmImage is synced
 	SuccessSynced = "Synced"
-	// ErrResourceExists is used as part of the Event 'reason' when a WarmImage fails
-	// to sync due to a Deployment of the same name already existing.
-	ErrResourceExists = "ErrResourceExists"
 
 	// MessageResourceSynced is the message used for an Event fired when a WarmImage
 	// is synced successfully
 	MessageResourceSynced = "WarmImage synced successfully"
 )
 
-var (
-	sleeper = flag.String("sleeper", "", "The name of the sleeper image, see //cmd/sleeper")
-)
-
-// Controller is the controller implementation for WarmImage resources
-type Controller struct {
+// Reconciler is the controller implementation for WarmImage resources
+type Reconciler struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
 	// warmimageclientset is a clientset for our own API group
 	warmimageclientset clientset.Interface
 
 	daemonsetsLister extlisters.DaemonSetLister
-	daemonsetsSynced cache.InformerSynced
-
 	warmimagesLister listers.WarmImageLister
-	warmimagesSynced cache.InformerSynced
 
-	// workqueue is a rate limited work queue. This is used to queue work to be
-	// processed instead of performing it as soon as a change happens. This
-	// means we can ensure we only process a fixed amount of resources at a
-	// time, and makes it easy to ensure we are never processing the same item
-	// simultaneously in two different workers.
-	workqueue workqueue.RateLimitingInterface
+	sleeperImage string
+
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
@@ -102,6 +84,9 @@ type Controller struct {
 	// the expense of slightly greater verbosity.
 	Logger *zap.SugaredLogger
 }
+
+// Check that we implement the controller.Reconciler interface.
+var _ controller.Reconciler = (*Reconciler)(nil)
 
 func init() {
 	// Create event broadcaster
@@ -115,15 +100,13 @@ func NewController(
 	logger *zap.SugaredLogger,
 	kubeclientset kubernetes.Interface,
 	warmimageclientset clientset.Interface,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	warmimageInformerFactory informers.SharedInformerFactory) controller.Interface {
+	daemonsetInformer extv1beta1informers.DaemonSetInformer,
+	warmimageInformer informers.WarmImageInformer,
+	sleeperImage string,
+) *controller.Impl {
 
 	// Enrich the logs with controller name
 	logger = logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
-
-	// obtain a reference to a shared index informer for the WarmImage type.
-	daemonsetInformer := kubeInformerFactory.Extensions().V1beta1().DaemonSets()
-	warmimageInformer := warmimageInformerFactory.Mattmoor().V2().WarmImages()
 
 	logger.Debug("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -134,132 +117,25 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(
 		scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	controller := &Controller{
+	r := &Reconciler{
 		kubeclientset:      kubeclientset,
 		warmimageclientset: warmimageclientset,
 		daemonsetsLister:   daemonsetInformer.Lister(),
-		daemonsetsSynced:   daemonsetInformer.Informer().HasSynced,
 		warmimagesLister:   warmimageInformer.Lister(),
-		warmimagesSynced:   warmimageInformer.Informer().HasSynced,
-		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "WarmImages"),
+		sleeperImage:       sleeperImage,
 		recorder:           recorder,
 		Logger:             logger,
 	}
+	impl := controller.NewImpl(r, logger, "WarmImages")
 
 	logger.Info("Setting up event handlers")
 	// Set up an event handler for when WarmImage resources change
 	warmimageInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueWarmImage,
-		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueWarmImage(new)
-		},
+		AddFunc:    impl.Enqueue,
+		UpdateFunc: controller.PassNew(impl.Enqueue),
 	})
 
-	return controller
-}
-
-// Run will set up the event handlers for types we are interested in, as well
-// as syncing informer caches and starting workers. It will block until stopCh
-// is closed, at which point it will shutdown the workqueue and wait for
-// workers to finish processing their current work items.
-func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
-	defer runtime.HandleCrash()
-	defer c.workqueue.ShutDown()
-
-	// Start the informer factories to begin populating the informer caches
-	c.Logger.Info("Starting WarmImage controller")
-
-	// Wait for the caches to be synced before starting workers
-	c.Logger.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.warmimagesSynced); !ok {
-		return fmt.Errorf("failed to wait for caches to sync")
-	}
-
-	c.Logger.Info("Starting workers")
-	// Launch two workers to process WarmImage resources
-	for i := 0; i < threadiness; i++ {
-		go wait.Until(c.runWorker, time.Second, stopCh)
-	}
-
-	c.Logger.Info("Started workers")
-	<-stopCh
-	c.Logger.Info("Shutting down workers")
-
-	return nil
-}
-
-// runWorker is a long-running function that will continually call the
-// processNextWorkItem function in order to read and process a message on the
-// workqueue.
-func (c *Controller) runWorker() {
-	for c.processNextWorkItem() {
-	}
-}
-
-// processNextWorkItem will read a single work item off the workqueue and
-// attempt to process it, by calling the syncHandler.
-func (c *Controller) processNextWorkItem() bool {
-	obj, shutdown := c.workqueue.Get()
-
-	if shutdown {
-		return false
-	}
-
-	// We wrap this block in a func so we can defer c.workqueue.Done.
-	err := func(obj interface{}) error {
-		// We call Done here so the workqueue knows we have finished
-		// processing this item. We also must remember to call Forget if we
-		// do not want this work item being re-queued. For example, we do
-		// not call Forget if a transient error occurs, instead the item is
-		// put back on the workqueue and attempted again after a back-off
-		// period.
-		defer c.workqueue.Done(obj)
-		var key string
-		var ok bool
-		// We expect strings to come off the workqueue. These are of the
-		// form namespace/name. We do this as the delayed nature of the
-		// workqueue means the items in the informer cache may actually be
-		// more up to date that when the item was initially put onto the
-		// workqueue.
-		if key, ok = obj.(string); !ok {
-			// As the item in the workqueue is actually invalid, we call
-			// Forget here else we'd go into a loop of attempting to
-			// process a work item that is invalid.
-			c.workqueue.Forget(obj)
-			runtime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
-			return nil
-		}
-		// Run the syncHandler, passing it the namespace/name string of the
-		// WarmImage resource to be synced.
-		if err := c.syncHandler(key); err != nil {
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
-		}
-		// Finally, if no error occurs we Forget this item so it does not
-		// get queued again until another change happens.
-		c.workqueue.Forget(obj)
-		c.Logger.Infof("Successfully synced '%s'", key)
-		return nil
-	}(obj)
-
-	if err != nil {
-		runtime.HandleError(err)
-		return true
-	}
-
-	return true
-}
-
-// enqueueWarmImage takes a WarmImage resource and converts it into a namespace/name
-// string which is then put onto the work queue. This method should *not* be
-// passed resources of any type other than WarmImage.
-func (c *Controller) enqueueWarmImage(obj interface{}) {
-	var key string
-	var err error
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	c.workqueue.AddRateLimited(key)
+	return impl
 }
 
 func labelsForDaemonSet(wi *warmimagev2.WarmImage) map[string]string {
@@ -301,7 +177,8 @@ func resolveTag(client kubernetes.Interface, t string, opt k8schain.Options) (st
 	return fmt.Sprintf("%s@%s", tag.Repository.String(), digest), nil
 }
 
-func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv1beta1.DaemonSet, error) {
+// TODO(mattmoor): Move to resources subpackage.
+func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage, sleeperImage string) (*extv1beta1.DaemonSet, error) {
 	opt := k8schain.Options{
 		Namespace: wi.Namespace,
 	}
@@ -318,6 +195,7 @@ func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: wi.Name,
 			Labels:       labelsForDaemonSet(wi),
+			// TODO(mattmoor): Use shared utility for this.
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(wi, schema.GroupVersionKind{
 					Group:   warmimagev2.SchemeGroupVersion.Group,
@@ -334,7 +212,7 @@ func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv
 				Spec: corev1.PodSpec{
 					InitContainers: []corev1.Container{{
 						Name:            "the-sleeper",
-						Image:           *sleeper,
+						Image:           sleeperImage,
 						ImagePullPolicy: corev1.PullAlways,
 						Args: []string{
 							"-mode", "copy",
@@ -347,7 +225,7 @@ func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv
 						Resources: corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
 								corev1.ResourceCPU:    resource.MustParse("1m"),
-								corev1.ResourceMemory: resource.MustParse("10M"),
+								corev1.ResourceMemory: resource.MustParse("20M"),
 							},
 						},
 					}},
@@ -364,7 +242,7 @@ func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv
 						Resources: corev1.ResourceRequirements{
 							Limits: corev1.ResourceList{
 								corev1.ResourceCPU:    resource.MustParse("1m"),
-								corev1.ResourceMemory: resource.MustParse("10M"),
+								corev1.ResourceMemory: resource.MustParse("20M"),
 							},
 						},
 					}},
@@ -381,10 +259,8 @@ func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage) (*extv
 	}, nil
 }
 
-// syncHandler compares the actual state with the desired, and attempts to
-// converge the two. It then updates the Status block of the WarmImage resource
-// with the current status of the resource.
-func (c *Controller) syncHandler(key string) error {
+// Reconcile implements controller.Reconciler
+func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -418,7 +294,7 @@ func (c *Controller) syncHandler(key string) error {
 	switch {
 	// If none exist, create one.
 	case len(dss.Items) == 0:
-		ds, err := newDaemonSet(c.kubeclientset, warmimage)
+		ds, err := newDaemonSet(c.kubeclientset, warmimage, c.sleeperImage)
 		if err != nil {
 			return err
 		}

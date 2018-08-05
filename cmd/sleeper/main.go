@@ -38,6 +38,7 @@ func main() {
 
 	switch *mode {
 	case "sleep":
+		// TODO(mattmoor): See if using the signals stuff makes this terminate faster.
 		// Sleep for 30 years.
 		time.Sleep(30 * 365 * 24 * time.Hour)
 		logger.Fatalf("Time to restart, goodbye cruel world.")

@@ -21,17 +21,17 @@ import (
 	"flag"
 	"time"
 
+	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging"
+	"github.com/knative/pkg/signals"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/mattmoor/warm-image/pkg/controller"
-	"github.com/mattmoor/warm-image/pkg/controller/warmimage"
-
-	"github.com/knative/pkg/signals"
 	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
 	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions"
+	"github.com/mattmoor/warm-image/pkg/reconciler/warmimage"
 )
 
 const (
@@ -41,6 +41,8 @@ const (
 var (
 	masterURL  = flag.String("kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	kubeconfig = flag.String("master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	// TODO(mattmoor): Move into a configmap and use the watcher.
+	sleeper = flag.String("sleeper", "", "The name of the sleeper image, see //cmd/sleeper")
 )
 
 func main() {
@@ -69,23 +71,39 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	warmimageInformerFactory := informers.NewSharedInformerFactory(warmimageClient, time.Second*30)
 
+	// obtain a reference to a shared index informer for the WarmImage type.
+	daemonsetInformer := kubeInformerFactory.Extensions().V1beta1().DaemonSets()
+	warmimageInformer := warmimageInformerFactory.Mattmoor().V2().WarmImages()
+
 	// Add new controllers here.
-	controllers := []controller.Interface{
+	controllers := []*controller.Impl{
 		warmimage.NewController(
 			logger,
 			kubeClient,
 			warmimageClient,
-			kubeInformerFactory,
-			warmimageInformerFactory,
+			daemonsetInformer,
+			warmimageInformer,
+			*sleeper,
 		),
 	}
 
 	go kubeInformerFactory.Start(stopCh)
 	go warmimageInformerFactory.Start(stopCh)
 
+	// Wait for the caches to be synced before starting controllers.
+	logger.Info("Waiting for informer caches to sync")
+	for i, synced := range []cache.InformerSynced{
+		daemonsetInformer.Informer().HasSynced,
+		warmimageInformer.Informer().HasSynced,
+	} {
+		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
+			logger.Fatalf("failed to wait for cache at index %v to sync", i)
+		}
+	}
+
 	// Start all of the controllers.
 	for _, ctrlr := range controllers {
-		go func(ctrlr controller.Interface) {
+		go func(ctrlr *controller.Impl) {
 			// We don't expect this to return until stop is called,
 			// but if it does, propagate it back.
 			if err := ctrlr.Run(threadsPerController, stopCh); err != nil {
