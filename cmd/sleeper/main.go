@@ -17,12 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"io"
 	"os"
 	"time"
 
-	"github.com/golang/glog"
+	"github.com/knative/pkg/logging"
 )
 
 var (
@@ -33,32 +34,34 @@ var (
 func main() {
 	flag.Parse()
 
+	logger := logging.FromContext(context.TODO()).Named("sleeper")
+
 	switch *mode {
 	case "sleep":
 		// Sleep for 30 years.
 		time.Sleep(30 * 365 * 24 * time.Hour)
-		glog.Fatalf("Time to restart, goodbye cruel world.")
+		logger.Fatalf("Time to restart, goodbye cruel world.")
 	case "copy":
 		if *to == "" {
-			glog.Fatalf("-to must be specified with -mode=copy")
+			logger.Fatalf("-to must be specified with -mode=copy")
 		}
 		from, err := os.Open(os.Args[0])
 		if err != nil {
-			glog.Fatal(err)
+			logger.Fatal(err)
 		}
 		defer from.Close()
 
 		to, err := os.OpenFile(*to, os.O_RDWR|os.O_CREATE, 0777)
 		if err != nil {
-			glog.Fatal(err)
+			logger.Fatal(err)
 		}
 		defer to.Close()
 
 		_, err = io.Copy(to, from)
 		if err != nil {
-			glog.Fatal(err)
+			logger.Fatal(err)
 		}
 	default:
-		glog.Fatalf("Unsupported mode: %s", *mode)
+		logger.Fatalf("Unsupported mode: %s", *mode)
 	}
 }

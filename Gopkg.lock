@@ -202,7 +202,11 @@
 [[projects]]
   branch = "master"
   name = "github.com/knative/pkg"
-  packages = ["signals"]
+  packages = [
+    "logging",
+    "logging/logkey",
+    "signals"
+  ]
   revision = "a088fee6227f7c6842ce7f7406cb75af8a6e0643"
 
 [[projects]]
@@ -215,6 +219,31 @@
   name = "github.com/spf13/pflag"
   packages = ["."]
   revision = "9ff6c6923cfffbcd502984b8e0c80539a94968b7"
+
+[[projects]]
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore"
+  ]
+  revision = "4d45f9617f7d90f7a663ff21c7a4321dbe78098b"
+  version = "v1.9.0"
 
 [[projects]]
   name = "golang.org/x/crypto"
@@ -590,6 +619,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "36dbd4d3ea025e8f6899d42ad619f48904ec0549f075ff8928acca668093b38d"
+  inputs-digest = "5a71e38b003341809137c239c3e06e2a13bc17d5179834b86c42435a6be06c1f"
   solver-name = "gps-cdcl"
   solver-version = 1

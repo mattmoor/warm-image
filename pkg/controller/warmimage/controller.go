@@ -22,10 +22,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/google/go-containerregistry/name"
 	"github.com/google/go-containerregistry/v1/remote"
+	"github.com/knative/pkg/logging/logkey"
 	"github.com/mattmoor/k8schain"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -93,28 +94,45 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+
+	// Sugared logger is easier to use but is not as performant as the
+	// raw logger. In performance critical paths, call logger.Desugar()
+	// and use the returned raw logger instead. In addition to the
+	// performance benefits, raw logger also preserves type-safety at
+	// the expense of slightly greater verbosity.
+	Logger *zap.SugaredLogger
+}
+
+func init() {
+	// Create event broadcaster
+	// Add warmimage-controller types to the default Kubernetes Scheme so Events can be
+	// logged for warmimage-controller types.
+	warmimagescheme.AddToScheme(scheme.Scheme)
 }
 
 // NewController returns a new warmimage controller
 func NewController(
+	logger *zap.SugaredLogger,
 	kubeclientset kubernetes.Interface,
 	warmimageclientset clientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	warmimageInformerFactory informers.SharedInformerFactory) controller.Interface {
 
+	// Enrich the logs with controller name
+	logger = logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
+
 	// obtain a reference to a shared index informer for the WarmImage type.
 	daemonsetInformer := kubeInformerFactory.Extensions().V1beta1().DaemonSets()
 	warmimageInformer := warmimageInformerFactory.Mattmoor().V2().WarmImages()
 
-	// Create event broadcaster
-	// Add warmimage-controller types to the default Kubernetes Scheme so Events can be
-	// logged for warmimage-controller types.
-	warmimagescheme.AddToScheme(scheme.Scheme)
-	glog.V(4).Info("Creating event broadcaster")
+	logger.Debug("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof)
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{
+		Interface: kubeclientset.CoreV1().Events(""),
+	})
+	recorder := eventBroadcaster.NewRecorder(
+		scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
 		kubeclientset:      kubeclientset,
@@ -125,9 +143,10 @@ func NewController(
 		warmimagesSynced:   warmimageInformer.Informer().HasSynced,
 		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "WarmImages"),
 		recorder:           recorder,
+		Logger:             logger,
 	}
 
-	glog.Info("Setting up event handlers")
+	logger.Info("Setting up event handlers")
 	// Set up an event handler for when WarmImage resources change
 	warmimageInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueWarmImage,
@@ -148,23 +167,23 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	glog.Info("Starting WarmImage controller")
+	c.Logger.Info("Starting WarmImage controller")
 
 	// Wait for the caches to be synced before starting workers
-	glog.Info("Waiting for informer caches to sync")
+	c.Logger.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.warmimagesSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	glog.Info("Starting workers")
+	c.Logger.Info("Starting workers")
 	// Launch two workers to process WarmImage resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
-	glog.Info("Started workers")
+	c.Logger.Info("Started workers")
 	<-stopCh
-	glog.Info("Shutting down workers")
+	c.Logger.Info("Shutting down workers")
 
 	return nil
 }
@@ -218,7 +237,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s'", key)
+		c.Logger.Infof("Successfully synced '%s'", key)
 		return nil
 	}(obj)
 
@@ -407,11 +426,11 @@ func (c *Controller) syncHandler(key string) error {
 		if err != nil {
 			return err
 		}
-		glog.Infof("Warming up: %q, with %q", warmimage.Spec.Image, ds.Name)
+		c.Logger.Infof("Warming up: %q, with %q", warmimage.Spec.Image, ds.Name)
 
 	// If multiple exist, delete all but one.
 	case len(dss.Items) > 1:
-		glog.Error("NYI: cleaning up multiple daemonsets for a single WarmImage.")
+		c.Logger.Error("NYI: cleaning up multiple daemonsets for a single WarmImage.")
 	}
 
 	// Delete any older versions of this WarmImage.
