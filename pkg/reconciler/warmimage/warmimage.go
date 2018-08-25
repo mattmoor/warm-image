@@ -19,18 +19,11 @@ package warmimage
 import (
 	"context"
 	"fmt"
-	"net/http"
 
-	"github.com/google/go-containerregistry/name"
-	"github.com/google/go-containerregistry/v1/remote"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging/logkey"
-	"github.com/mattmoor/k8schain"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	extv1beta1informers "k8s.io/client-go/informers/extensions/v1beta1"
@@ -45,6 +38,7 @@ import (
 	warmimagescheme "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/scheme"
 	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions/warmimage/v2"
 	listers "github.com/mattmoor/warm-image/pkg/client/listers/warmimage/v2"
+	"github.com/mattmoor/warm-image/pkg/reconciler/warmimage/resources"
 )
 
 const controllerAgentName = "warmimage-controller"
@@ -111,122 +105,6 @@ func NewController(
 	return impl
 }
 
-func labelsForDaemonSet(wi *warmimagev2.WarmImage) map[string]string {
-	return map[string]string{
-		"controller": string(wi.UID),
-		"version":    wi.ResourceVersion,
-	}
-}
-
-func oldVersionLabelSelector(wi *warmimagev2.WarmImage) string {
-	return fmt.Sprintf("controller=%s,version!=%s", wi.UID, wi.ResourceVersion)
-}
-
-func resolveTag(client kubernetes.Interface, t string, opt k8schain.Options) (string, error) {
-	tag, err := name.NewTag(t, name.WeakValidation)
-	if err != nil {
-		// If we fail to parse it as a tag, simply return the input string (it is likely a digest)
-		return t, nil
-	}
-
-	kc, err := k8schain.New(client, opt)
-	if err != nil {
-		return "", err
-	}
-
-	auth, err := kc.Resolve(tag.Registry)
-	if err != nil {
-		return "", err
-	}
-
-	img, err := remote.Image(tag, auth, http.DefaultTransport)
-	if err != nil {
-		return "", err
-	}
-	digest, err := img.Digest()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s@%s", tag.Repository.String(), digest), nil
-}
-
-// TODO(mattmoor): Move to resources subpackage.
-func newDaemonSet(client kubernetes.Interface, wi *warmimagev2.WarmImage, sleeperImage string) (*extv1beta1.DaemonSet, error) {
-	opt := k8schain.Options{
-		Namespace: wi.Namespace,
-	}
-	ips := []corev1.LocalObjectReference{}
-	if wi.Spec.ImagePullSecrets != nil {
-		ips = append(ips, *wi.Spec.ImagePullSecrets)
-		opt.ImagePullSecrets = append(opt.ImagePullSecrets, wi.Spec.ImagePullSecrets.Name)
-	}
-	img, err := resolveTag(client, wi.Spec.Image, opt)
-	if err != nil {
-		return nil, err
-	}
-	return &extv1beta1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: wi.Name,
-			Labels:       labelsForDaemonSet(wi),
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(wi, warmimagev2.SchemeGroupVersion.WithKind("WarmImage")),
-			},
-		},
-		Spec: extv1beta1.DaemonSetSpec{
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labelsForDaemonSet(wi),
-				},
-				Spec: corev1.PodSpec{
-					InitContainers: []corev1.Container{{
-						Name:            "the-sleeper",
-						Image:           sleeperImage,
-						ImagePullPolicy: corev1.PullAlways,
-						Args: []string{
-							"-mode", "copy",
-							"-to", "/drop/sleeper",
-						},
-						VolumeMounts: []corev1.VolumeMount{{
-							Name:      "the-sleeper",
-							MountPath: "/drop/",
-						}},
-						Resources: corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("1m"),
-								corev1.ResourceMemory: resource.MustParse("20M"),
-							},
-						},
-					}},
-					Containers: []corev1.Container{{
-						Name:            "the-image",
-						Image:           img,
-						ImagePullPolicy: corev1.PullAlways,
-						Command:         []string{"/drop/sleeper"},
-						Args:            []string{"-mode", "sleep"},
-						VolumeMounts: []corev1.VolumeMount{{
-							Name:      "the-sleeper",
-							MountPath: "/drop/",
-						}},
-						Resources: corev1.ResourceRequirements{
-							Limits: corev1.ResourceList{
-								corev1.ResourceCPU:    resource.MustParse("1m"),
-								corev1.ResourceMemory: resource.MustParse("20M"),
-							},
-						},
-					}},
-					ImagePullSecrets: ips,
-					Volumes: []corev1.Volume{{
-						Name: "the-sleeper",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					}},
-				},
-			},
-		},
-	}, nil
-}
-
 // Reconcile implements controller.Reconciler
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
@@ -238,55 +116,51 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Get the WarmImage resource with this namespace/name
 	warmimage, err := c.warmimagesLister.WarmImages(namespace).Get(name)
-	if err != nil {
-		// The WarmImage resource may no longer exist, in which case we stop
-		// processing.
-		if errors.IsNotFound(err) {
-			runtime.HandleError(fmt.Errorf("warmimage '%s' in work queue no longer exists", key))
-			return nil
-		}
-
+	if errors.IsNotFound(err) {
+		// The WarmImage resource may no longer exist, in which case we stop processing.
+		runtime.HandleError(fmt.Errorf("warmimage '%s' in work queue no longer exists", key))
+		return nil
+	} else if err != nil {
 		return err
 	}
 
+	if err := c.reconcileDaemonSet(ctx, warmimage); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *warmimagev2.WarmImage) error {
 	// Make sure the desired image is warmed up ASAP.
-	l := labelsForDaemonSet(warmimage)
-	// TODO(mattmoor): List through the Lister.
-	dss, err := c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).List(metav1.ListOptions{
-		LabelSelector: metav1.FormatLabelSelector(&metav1.LabelSelector{
-			MatchLabels: l,
-		}),
-	})
+	dss, err := c.daemonsetsLister.DaemonSets(wi.Namespace).List(resources.MakeLabelSelector(wi))
 	if err != nil {
 		return err
 	}
+
 	switch {
 	// If none exist, create one.
-	case len(dss.Items) == 0:
-		ds, err := newDaemonSet(c.kubeclientset, warmimage, c.sleeperImage)
+	case len(dss) == 0:
+		ds := resources.MakeDaemonSet(wi, c.sleeperImage)
+		ds, err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(wi.Namespace).Create(ds)
 		if err != nil {
 			return err
 		}
-		ds, err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).Create(ds)
-		if err != nil {
-			return err
-		}
-		c.Logger.Infof("Warming up: %q, with %q", warmimage.Spec.Image, ds.Name)
+		c.Logger.Infof("Warming up: %q, with %q", wi.Spec.Image, ds.Name)
 
 	// If multiple exist, delete all but one.
-	case len(dss.Items) > 1:
+	case len(dss) > 1:
 		c.Logger.Error("NYI: cleaning up multiple daemonsets for a single WarmImage.")
 	}
 
 	// Delete any older versions of this WarmImage.
 	propPolicy := metav1.DeletePropagationForeground
-	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(namespace).DeleteCollection(
+	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(wi.Namespace).DeleteCollection(
 		&metav1.DeleteOptions{PropagationPolicy: &propPolicy},
-		metav1.ListOptions{LabelSelector: oldVersionLabelSelector(warmimage)},
+		metav1.ListOptions{LabelSelector: resources.MakeOldVersionLabelSelector(wi)},
 	)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
