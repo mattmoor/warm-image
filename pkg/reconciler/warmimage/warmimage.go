@@ -157,7 +157,7 @@ func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *warmimagev2.War
 	propPolicy := metav1.DeletePropagationForeground
 	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(wi.Namespace).DeleteCollection(
 		&metav1.DeleteOptions{PropagationPolicy: &propPolicy},
-		metav1.ListOptions{LabelSelector: resources.MakeOldVersionLabelSelector(wi)},
+		metav1.ListOptions{LabelSelector: resources.MakeOldVersionLabelSelector(wi).String()},
 	)
 	if err != nil {
 		return err

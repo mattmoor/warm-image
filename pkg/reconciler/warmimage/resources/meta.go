@@ -19,8 +19,8 @@ package resources
 import (
 	"fmt"
 
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	warmimagev2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
 )
@@ -36,6 +36,17 @@ func MakeLabelSelector(wi *warmimagev2.WarmImage) labels.Selector {
 	return labels.SelectorFromSet(MakeLabels(wi))
 }
 
-func MakeOldVersionLabelSelector(wi *warmimagev2.WarmImage) string {
-	return fmt.Sprintf("controller=%s,version!=%s", wi.UID, wi.ResourceVersion)
+func MakeOldVersionLabelSelector(wi *warmimagev2.WarmImage) labels.Selector {
+	return labels.NewSelector().Add(
+		mustNewRequirement("controller", selection.Equals, []string{string(wi.UID)}),
+		mustNewRequirement("version", selection.NotEquals, []string{wi.ResourceVersion}),
+	)
+}
+
+func mustNewRequirement(key string, op selection.Operator, vals []string) labels.Requirement {
+	r, err := labels.NewRequirement(key, op, vals)
+	if err != nil {
+		panic(fmt.Sprintf("mustNewRequirement(%v, %v, %v) = %v", key, op, vals, err))
+	}
+	return *r
 }
