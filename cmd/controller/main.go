@@ -29,8 +29,8 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
-	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions"
+	clientset "github.com/knative/caching/pkg/client/clientset/versioned"
+	informers "github.com/knative/caching/pkg/client/informers/externalversions"
 	"github.com/mattmoor/warm-image/pkg/reconciler/warmimage"
 )
 
@@ -73,7 +73,7 @@ func main() {
 
 	// obtain a reference to a shared index informer for the WarmImage type.
 	daemonsetInformer := kubeInformerFactory.Extensions().V1beta1().DaemonSets()
-	warmimageInformer := warmimageInformerFactory.Mattmoor().V2().WarmImages()
+	warmimageInformer := warmimageInformerFactory.Caching().V1alpha1().Images()
 
 	// Add new controllers here.
 	controllers := []*controller.Impl{

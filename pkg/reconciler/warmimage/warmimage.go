@@ -33,11 +33,11 @@ import (
 
 	extlisters "k8s.io/client-go/listers/extensions/v1beta1"
 
-	warmimagev2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
-	clientset "github.com/mattmoor/warm-image/pkg/client/clientset/versioned"
-	warmimagescheme "github.com/mattmoor/warm-image/pkg/client/clientset/versioned/scheme"
-	informers "github.com/mattmoor/warm-image/pkg/client/informers/externalversions/warmimage/v2"
-	listers "github.com/mattmoor/warm-image/pkg/client/listers/warmimage/v2"
+	imagecache "github.com/knative/caching/pkg/apis/caching/v1alpha1"
+	clientset "github.com/knative/caching/pkg/client/clientset/versioned"
+	warmimagescheme "github.com/knative/caching/pkg/client/clientset/versioned/scheme"
+	informers "github.com/knative/caching/pkg/client/informers/externalversions/caching/v1alpha1"
+	listers "github.com/knative/caching/pkg/client/listers/caching/v1alpha1"
 	"github.com/mattmoor/warm-image/pkg/reconciler/warmimage/resources"
 )
 
@@ -51,7 +51,7 @@ type Reconciler struct {
 	warmimageclientset clientset.Interface
 
 	daemonsetsLister extlisters.DaemonSetLister
-	warmimagesLister listers.WarmImageLister
+	warmimagesLister listers.ImageLister
 
 	sleeperImage string
 
@@ -78,7 +78,7 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	warmimageclientset clientset.Interface,
 	daemonsetInformer extv1beta1informers.DaemonSetInformer,
-	warmimageInformer informers.WarmImageInformer,
+	warmimageInformer informers.ImageInformer,
 	sleeperImage string,
 ) *controller.Impl {
 
@@ -93,7 +93,7 @@ func NewController(
 		sleeperImage:       sleeperImage,
 		Logger:             logger,
 	}
-	impl := controller.NewImpl(r, logger, "WarmImages")
+	impl := controller.NewImpl(r, logger, "Images")
 
 	logger.Info("Setting up event handlers")
 	// Set up an event handler for when WarmImage resources change
@@ -115,7 +115,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	// Get the WarmImage resource with this namespace/name
-	warmimage, err := c.warmimagesLister.WarmImages(namespace).Get(name)
+	warmimage, err := c.warmimagesLister.Images(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		// The WarmImage resource may no longer exist, in which case we stop processing.
 		runtime.HandleError(fmt.Errorf("warmimage '%s' in work queue no longer exists", key))
@@ -131,7 +131,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *warmimagev2.WarmImage) error {
+func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *imagecache.Image) error {
 	// Make sure the desired image is warmed up ASAP.
 	dss, err := c.daemonsetsLister.DaemonSets(wi.Namespace).List(resources.MakeLabelSelector(wi))
 	if err != nil {

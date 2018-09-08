@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	warmimagev2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
+	imagecache "github.com/knative/caching/pkg/apis/caching/v1alpha1"
 )
 
 var (
@@ -71,7 +71,7 @@ func userContainer(image string) corev1.Container {
 	}
 }
 
-func MakeDaemonSet(wi *warmimagev2.WarmImage, sleeperImage string) *extv1beta1.DaemonSet {
+func MakeDaemonSet(wi *imagecache.Image, sleeperImage string) *extv1beta1.DaemonSet {
 	ips := []corev1.LocalObjectReference{}
 	if wi.Spec.ImagePullSecrets != nil {
 		ips = append(ips, *wi.Spec.ImagePullSecrets)
@@ -81,7 +81,7 @@ func MakeDaemonSet(wi *warmimagev2.WarmImage, sleeperImage string) *extv1beta1.D
 			GenerateName: wi.Name,
 			Labels:       MakeLabels(wi),
 			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(wi, warmimagev2.SchemeGroupVersion.WithKind("WarmImage")),
+				*metav1.NewControllerRef(wi, imagecache.SchemeGroupVersion.WithKind("Image")),
 			},
 		},
 		Spec: extv1beta1.DaemonSetSpec{

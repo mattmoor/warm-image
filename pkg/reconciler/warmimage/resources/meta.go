@@ -22,21 +22,21 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 
-	warmimagev2 "github.com/mattmoor/warm-image/pkg/apis/warmimage/v2"
+	imagecache "github.com/knative/caching/pkg/apis/caching/v1alpha1"
 )
 
-func MakeLabels(wi *warmimagev2.WarmImage) labels.Set {
+func MakeLabels(wi *imagecache.Image) labels.Set {
 	return map[string]string{
 		"controller": string(wi.UID),
 		"version":    wi.ResourceVersion,
 	}
 }
 
-func MakeLabelSelector(wi *warmimagev2.WarmImage) labels.Selector {
+func MakeLabelSelector(wi *imagecache.Image) labels.Selector {
 	return labels.SelectorFromSet(MakeLabels(wi))
 }
 
-func MakeOldVersionLabelSelector(wi *warmimagev2.WarmImage) labels.Selector {
+func MakeOldVersionLabelSelector(wi *imagecache.Image) labels.Selector {
 	return labels.NewSelector().Add(
 		mustNewRequirement("controller", selection.Equals, []string{string(wi.UID)}),
 		mustNewRequirement("version", selection.NotEquals, []string{wi.ResourceVersion}),

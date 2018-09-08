@@ -1,6 +1,0 @@
-apiVersion: mattmoor.io/v2
-kind: WarmImage
-metadata:
-  name: example-warmimage
-spec:
-  image: gcr.io/google-appengine/debian9:latest
