@@ -12,15 +12,25 @@ required = [
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.10.0"
+  version = "kubernetes-1.11.0"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.10.0"
+  version = "kubernetes-1.11.0"
 
 [[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.10.0"
+  version = "kubernetes-1.11.0"
+
+[[constraint]]
+  name = "github.com/knative/pkg"
+  revision = "0122abd98318e345b107e01137ff05c33aa637d2"
+
+[[override]]
+  name = "github.com/json-iterator/go"
+  # This is the commit at which k8s depends on this in 1.11
+  # It seems to be broken at HEAD.
+  revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [prune]
   go-tests = true
