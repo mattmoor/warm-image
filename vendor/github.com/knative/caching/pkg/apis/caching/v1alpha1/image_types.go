@@ -23,8 +23,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/knative/pkg/apis"
+	"github.com/knative/pkg/kmeta"
 )
 
 // +genclient
@@ -49,6 +51,7 @@ type Image struct {
 // Check that Image can be validated and defaulted.
 var _ apis.Validatable = (*Image)(nil)
 var _ apis.Defaultable = (*Image)(nil)
+var _ kmeta.OwnerRefable = (*Image)(nil)
 
 // ImageSpec holds the desired state of the Image (from the client).
 type ImageSpec struct {
@@ -170,4 +173,8 @@ func (rs *ImageStatus) InitializeConditions() {
 			})
 		}
 	}
+}
+
+func (i *Image) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("Image")
 }

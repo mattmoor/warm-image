@@ -122,11 +122,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:79de2389d32812b2e35a4f686a1cd33a672ccb63d11ba204167443e369ae4fff"
+  digest = "1:0f5c0a93ea5a62ea721282a07746832546580707042f705710f6e9f9778a0598"
   name = "github.com/knative/pkg"
-  packages = ["apis"]
+  packages = [
+    "apis",
+    "kmeta",
+  ]
   pruneopts = "NUT"
-  revision = "382a2bff0af11980b0cc9d24f8ec8a5b8ade471f"
+  revision = "2a7e950c4e2d635d6e32ba3d050dd32ba7be5be3"
 
 [[projects]]
   branch = "master"
@@ -448,6 +451,7 @@
   input-imports = [
     "github.com/google/go-cmp/cmp",
     "github.com/knative/pkg/apis",
+    "github.com/knative/pkg/kmeta",
     "github.com/knative/test-infra",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/equality",

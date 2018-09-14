@@ -15,7 +15,11 @@
 
 [[constraint]]
   name = "github.com/knative/pkg"
-  revision = "0122abd98318e345b107e01137ff05c33aa637d2"
+  revision = "2a7e950c4e2d635d6e32ba3d050dd32ba7be5be3"
+
+[[constraint]]
+  name = "github.com/knative/caching"
+  revision = "bba06b0586777570395815c1e7850d0cca9cb961"
 
 [[override]]
   name = "github.com/json-iterator/go"

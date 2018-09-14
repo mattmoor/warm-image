@@ -22,7 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	imagecache "github.com/knative/caching/pkg/apis/caching/v1alpha1"
+	caching "github.com/knative/caching/pkg/apis/caching/v1alpha1"
+	"github.com/knative/pkg/kmeta"
 )
 
 var (
@@ -71,23 +72,21 @@ func userContainer(image string) corev1.Container {
 	}
 }
 
-func MakeDaemonSet(wi *imagecache.Image, sleeperImage string) *extv1beta1.DaemonSet {
+func MakeDaemonSet(wi *caching.Image, sleeperImage string) *extv1beta1.DaemonSet {
 	ips := []corev1.LocalObjectReference{}
 	if wi.Spec.ImagePullSecrets != nil {
 		ips = append(ips, *wi.Spec.ImagePullSecrets)
 	}
 	return &extv1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: wi.Name,
-			Labels:       MakeLabels(wi),
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(wi, imagecache.SchemeGroupVersion.WithKind("Image")),
-			},
+			GenerateName:    wi.Name,
+			Labels:          kmeta.MakeVersionLabels(wi),
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(wi)},
 		},
 		Spec: extv1beta1.DaemonSetSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: MakeLabels(wi),
+					Labels: kmeta.MakeVersionLabels(wi),
 				},
 				Spec: corev1.PodSpec{
 					InitContainers:   []corev1.Container{sleeperContainer(sleeperImage)},

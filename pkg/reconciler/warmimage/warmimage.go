@@ -33,7 +33,9 @@ import (
 
 	extlisters "k8s.io/client-go/listers/extensions/v1beta1"
 
-	imagecache "github.com/knative/caching/pkg/apis/caching/v1alpha1"
+	"github.com/knative/pkg/kmeta"
+
+	caching "github.com/knative/caching/pkg/apis/caching/v1alpha1"
 	clientset "github.com/knative/caching/pkg/client/clientset/versioned"
 	warmimagescheme "github.com/knative/caching/pkg/client/clientset/versioned/scheme"
 	informers "github.com/knative/caching/pkg/client/informers/externalversions/caching/v1alpha1"
@@ -131,9 +133,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *imagecache.Image) error {
+func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *caching.Image) error {
 	// Make sure the desired image is warmed up ASAP.
-	dss, err := c.daemonsetsLister.DaemonSets(wi.Namespace).List(resources.MakeLabelSelector(wi))
+	dss, err := c.daemonsetsLister.DaemonSets(wi.Namespace).List(kmeta.MakeVersionLabelSelector(wi))
 	if err != nil {
 		return err
 	}
@@ -157,7 +159,7 @@ func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *imagecache.Imag
 	propPolicy := metav1.DeletePropagationForeground
 	err = c.kubeclientset.ExtensionsV1beta1().DaemonSets(wi.Namespace).DeleteCollection(
 		&metav1.DeleteOptions{PropagationPolicy: &propPolicy},
-		metav1.ListOptions{LabelSelector: resources.MakeOldVersionLabelSelector(wi).String()},
+		metav1.ListOptions{LabelSelector: kmeta.MakeOldVersionLabelSelector(wi).String()},
 	)
 	if err != nil {
 		return err

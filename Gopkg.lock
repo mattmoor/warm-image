@@ -107,8 +107,7 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  branch = "master"
-  digest = "1:826576a2dbea52eb350ed5c0fd3e53f1f24cd6bdcfaf89ff89239b8cd426cd0d"
+  digest = "1:bbf23c933131b49b0f58e9b6be3b90913e21911b378df6880346769f23061a29"
   name = "github.com/knative/caching"
   packages = [
     "pkg/apis/caching",
@@ -123,20 +122,21 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "f0d7bb60956f88d4743f5fea66b5607b96d262c9"
+  revision = "bba06b0586777570395815c1e7850d0cca9cb961"
 
 [[projects]]
-  digest = "1:3a29abd8ac3c3a0d110413733715173eb6a3b8f603df761b073498601c57f71c"
+  digest = "1:6ccbb44d66cf2f5e0c0cd241f64e334771788c5a4b1c7bb10b9c939e674cf597"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
     "controller",
+    "kmeta",
     "logging",
     "logging/logkey",
     "signals",
   ]
   pruneopts = "NUT"
-  revision = "0122abd98318e345b107e01137ff05c33aa637d2"
+  revision = "2a7e950c4e2d635d6e32ba3d050dd32ba7be5be3"
 
 [[projects]]
   digest = "1:2f42fa12d6911c7b7659738758631bec870b7e9b4c6be5444f963cdcfccc191f"
@@ -317,7 +317,7 @@
   version = "kubernetes-1.11.0"
 
 [[projects]]
-  digest = "1:f6fb0c95abbd08ce24a2ac659070640b4307d38e1a6564c5d514906fe8b3ba33"
+  digest = "1:a26c8e664af7122535f2b13fd4977a0d25894a545e7ce679502e49372812f6e6"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -349,7 +349,6 @@
     "pkg/util/framer",
     "pkg/util/intstr",
     "pkg/util/json",
-    "pkg/util/mergepatch",
     "pkg/util/net",
     "pkg/util/runtime",
     "pkg/util/sets",
@@ -517,8 +516,6 @@
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
-    "k8s.io/apimachinery/pkg/labels",
-    "k8s.io/apimachinery/pkg/selection",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/informers/extensions/v1beta1",
