@@ -19,7 +19,7 @@
 
 [[constraint]]
   name = "github.com/knative/caching"
-  revision = "bba06b0586777570395815c1e7850d0cca9cb961"
+  revision = "a9dfa1866028299dcbc3ea8102d0128daf702063"
 
 [[override]]
   name = "github.com/json-iterator/go"

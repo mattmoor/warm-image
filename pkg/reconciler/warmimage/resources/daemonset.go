@@ -73,10 +73,6 @@ func userContainer(image string) corev1.Container {
 }
 
 func MakeDaemonSet(wi *caching.Image, sleeperImage string) *extv1beta1.DaemonSet {
-	ips := []corev1.LocalObjectReference{}
-	if wi.Spec.ImagePullSecrets != nil {
-		ips = append(ips, *wi.Spec.ImagePullSecrets)
-	}
 	return &extv1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName:    wi.Name,
@@ -91,7 +87,7 @@ func MakeDaemonSet(wi *caching.Image, sleeperImage string) *extv1beta1.DaemonSet
 				Spec: corev1.PodSpec{
 					InitContainers:   []corev1.Container{sleeperContainer(sleeperImage)},
 					Containers:       []corev1.Container{userContainer(wi.Spec.Image)},
-					ImagePullSecrets: ips,
+					ImagePullSecrets: wi.Spec.ImagePullSecrets,
 					Volumes:          []corev1.Volume{sleeperVolume},
 				},
 			},

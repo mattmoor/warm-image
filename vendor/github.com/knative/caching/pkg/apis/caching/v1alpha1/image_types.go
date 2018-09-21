@@ -66,10 +66,10 @@ type ImageSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// ImagePullSecrets is the name of the Kubernetes Secret containing login information
-	// used by the Pods which will run this container.
+	// ImagePullSecrets contains the names of the Kubernetes Secrets containing login
+	// information used by the Pods which will run this container.
 	// +optional
-	ImagePullSecrets *corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // ImageConditionType is used to communicate the status of the reconciliation process.

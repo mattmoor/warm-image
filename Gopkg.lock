@@ -107,7 +107,7 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:bbf23c933131b49b0f58e9b6be3b90913e21911b378df6880346769f23061a29"
+  digest = "1:d7e2c74dbd3a43117b7a0c85e2876cc80c4775578a3ff38155d9b2a6f579189e"
   name = "github.com/knative/caching"
   packages = [
     "pkg/apis/caching",
@@ -122,7 +122,7 @@
     "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "bba06b0586777570395815c1e7850d0cca9cb961"
+  revision = "a9dfa1866028299dcbc3ea8102d0128daf702063"
 
 [[projects]]
   digest = "1:6ccbb44d66cf2f5e0c0cd241f64e334771788c5a4b1c7bb10b9c939e674cf597"
@@ -507,6 +507,7 @@
     "github.com/knative/caching/pkg/client/informers/externalversions/caching/v1alpha1",
     "github.com/knative/caching/pkg/client/listers/caching/v1alpha1",
     "github.com/knative/pkg/controller",
+    "github.com/knative/pkg/kmeta",
     "github.com/knative/pkg/logging",
     "github.com/knative/pkg/logging/logkey",
     "github.com/knative/pkg/signals",
