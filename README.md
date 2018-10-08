@@ -2,30 +2,27 @@
 
 ## Overview
 
-This repository defines a Kubernetes "Custom Resource Definition" (CRD) called
-`WarmImage`.  The `WarmImage` CRD takes an image reference (with optional
-secrets) and prefetches it onto every node in your cluster.
+This branch defines a Proof-of-Concept implementation of the Knative Image cache
+resource that prefetches it onto every node in your cluster using a DaemonSet.
 
 ## Cluster Setup
 
-**It is recommended that folks install this into its own namespace.**
-
-To install this custom resource onto your cluster, you may simply run:
+To install this onto your cluster, you may simply run:
 ```shell
 # Install the CRD and Controller.
-curl https://raw.githubusercontent.com/mattmoor/warm-image/master/release.yaml \
-  | kubectl create -f -
+curl https://raw.githubusercontent.com/mattmoor/warm-image/poc-cache/release.yaml \
+  | kubectl apply -f -
 ```
 
 Alternately you may `git clone` this repository and run:
 ```shell
 # Install the CRD and Controller.
-kubectl create -f release.yaml
+kubectl apply -f release.yaml
 ```
 
 ### Uninstall
 
-Simply use the same command you used to install, but with `kubectl delete` instead of `kubectl create`.
+Simply use the same command you used to install, but with `kubectl delete` instead of `kubectl apply`.
 
 ## Usage
 
@@ -33,44 +30,46 @@ Simply use the same command you used to install, but with `kubectl delete` inste
 
 The specification for an image to "warm up" looks like:
 ```yaml
-apiVersion: mattmoor.io/v2
-kind: WarmImage
+apiVersion: caching.internal.knative.dev/v1alpha1
+kind: Image
 metadata:
   name: example-warmimage
 spec:
   image: gcr.io/google-appengine/debian8:latest
   # Optionally:
-  # imagePullSecrets: 
+  # imagePullSecrets:
   # - name: foo
+  # Or:
+  # serviceAccountName: bar
 ```
 
 ### Creation
 
 With the above in `foo.yaml`, you would install the image with:
 ```shell
-kubectl create -f foo.yaml
+kubectl apply -f foo.yaml
 ```
 
 ### Listing
 
 You can see what images are "warm" via:
 ```shell
-$ kubectl get warmimages
+$ kubectl get images
 NAME                KIND
-example-warmimage   WarmImage.v2.mattmoor.io
+example-warmimage   Image.v1alpha1.caching.internal.knative.dev
 ```
 
 ### Updating
 
 You can upgrade `foo.yaml` to `debian9` and run:
 ```shell
-kubectl replace -f foo.yaml
+kubectl apply -f foo.yaml
 ```
 
 ### Removing
 
 You can remove a warmed image via:
 ```shell
-kubectl delete warmimage example-warmimage
+kubectl delete image example-warmimage
 ```
 

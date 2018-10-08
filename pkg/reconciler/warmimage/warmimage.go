@@ -134,6 +134,11 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcileDaemonSet(ctx context.Context, wi *caching.Image) error {
+	if wi.GetDeletionTimestamp() != nil {
+		c.Logger.Infof("Image is being deleted: %s/%s", wi.Namespace, wi.Name)
+		return nil
+	}
+
 	// Make sure the desired image is warmed up ASAP.
 	dss, err := c.daemonsetsLister.DaemonSets(wi.Namespace).List(kmeta.MakeVersionLabelSelector(wi))
 	if err != nil {

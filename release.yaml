@@ -1,43 +1,65 @@
-apiVersion: v1
-kind: Namespace
-metadata: {name: warmimage-system}
-
 ---
 apiVersion: v1
-kind: ServiceAccount
-metadata: {name: warmimage-controller, namespace: warmimage-system}
-
+kind: Namespace
+metadata:
+  name: warmimage-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
-metadata: {name: warmimage-controller-admin}
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: cluster-admin}
+metadata:
+  name: warmimage-controller-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
 subjects:
-- {kind: ServiceAccount, name: warmimage-controller, namespace: warmimage-system}
-
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata: {name: warmimages.mattmoor.io}
-spec:
-  group: mattmoor.io
-  names: {kind: WarmImage, plural: warmimages, singular: warmimage}
-  scope: Namespaced
-  version: v2
-
+- kind: ServiceAccount
+  name: warmimage-controller
+  namespace: warmimage-system
 ---
 apiVersion: apps/v1beta1
 kind: Deployment
-metadata: {name: warmimage-controller, namespace: warmimage-system}
+metadata:
+  name: warmimage-controller
+  namespace: warmimage-system
 spec:
   replicas: 1
   template:
     metadata:
-      labels: {app: warmimage-controller}
+      labels:
+        app: warmimage-controller
     spec:
       containers:
-      - args: [-logtostderr=true, -stderrthreshold=INFO, -sleeper, 'gcr.io/mattmoor-public/sleeper@sha256:d431f1c78bb16fbb0c9831a610bc9580379a4f9ab0a339efd2ffb36ea5ffeca2']
-        image: gcr.io/mattmoor-public/warmimage-controller@sha256:5adc366a59c83b0bb12b424c86ea89a6f996fb089eefb5870d96cf242d7d4926
+      - args:
+        - -logtostderr=true
+        - -stderrthreshold=INFO
+        - -sleeper
+        - gcr.io/mattmoor-public/sleeper-ebdb8b8b13d4bbe1d3592de055016d37@sha256:3e2ee7d5e80aa58c4cc429faf17ed94d66f13b3d4f271c550a27989c12cfbe91
+        image: gcr.io/mattmoor-public/controller-9e91872fd7c48124dbe6ea83944b87e9@sha256:826fbec1bfd705afe590ce7f60462ff76173df6eb15305400af48511a8beb144
         name: warmimage-controller
       serviceAccountName: warmimage-controller
-
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: warmimage-controller
+  namespace: warmimage-system
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: images.caching.internal.knative.dev
+spec:
+  group: caching.internal.knative.dev
+  names:
+    categories:
+    - all
+    - knative-internal
+    - caching
+    kind: Image
+    plural: images
+    shortNames:
+    - img
+    singular: image
+  scope: Namespaced
+  version: v1alpha1

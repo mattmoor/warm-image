@@ -53,6 +53,8 @@ func TestRevisions(t *testing.T) {
 		want: &extv1beta1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "foo",
+				Namespace:    "bar",
+				Annotations:  disableCaching,
 				Labels: map[string]string{
 					"controller": "",
 					"version":    "abcd",
@@ -98,6 +100,8 @@ func TestRevisions(t *testing.T) {
 		want: &extv1beta1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "foo",
+				Namespace:    "bar",
+				Annotations:  disableCaching,
 				Labels: map[string]string{
 					"controller": "",
 					"version":    "bleh",
@@ -146,6 +150,8 @@ func TestRevisions(t *testing.T) {
 		want: &extv1beta1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "foo",
+				Namespace:    "bar",
+				Annotations:  disableCaching,
 				Labels: map[string]string{
 					"controller": "",
 					"version":    "yuck",

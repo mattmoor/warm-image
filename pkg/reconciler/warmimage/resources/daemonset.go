@@ -39,6 +39,10 @@ var (
 			corev1.ResourceMemory: resource.MustParse("20M"),
 		},
 	}
+	// TODO(mattmoor): We need a standardized way of disabling this.
+	disableCaching = map[string]string{
+		"cachier.mattmoor.io/decorate": "disable",
+	}
 )
 
 func sleeperContainer(sleeperImage string) corev1.Container {
@@ -76,6 +80,8 @@ func MakeDaemonSet(wi *caching.Image, sleeperImage string) *extv1beta1.DaemonSet
 	return &extv1beta1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName:    wi.Name,
+			Namespace:       wi.Namespace,
+			Annotations:     disableCaching,
 			Labels:          kmeta.MakeVersionLabels(wi),
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(wi)},
 		},
